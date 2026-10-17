@@ -1,0 +1,81 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id        Int        @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  status    LeadStatus @default(NEW)
+  budget    String?
+  project   String?
+  timeline  String?
+  notes     String?
+  score     Int        @default(0)
+  source    String?
+  priority  Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  assessment Assessment?
+}
+
+model Assessment {
+  id        String @id @default(cuid())
+  sessionId String @unique
+
+  leadId Int?  @unique
+  lead   Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  status              AssessmentStatus     @default(IN_PROGRESS)
+  qualificationStatus QualificationStatus  @default(NEEDS_DISCOVERY)
+  qualificationScore  Int                  @default(0)
+
+  businessName        String?
+  industry            String?
+  businessModel       String?
+  teamSize            String?
+  decisionMaker       String?
+  investmentReadiness String?
+
+  businessProfile       Json?
+  operationalChallenges Json?
+  currentTools          Json?
+  requirements          Json?
+  conversation          Json?
+  assessmentSummary     String?
+
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED
+  LOST
+}
+
+enum AssessmentStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum QualificationStatus {
+  NEEDS_DISCOVERY
+  QUALIFIED
+  NEEDS_REVIEW
+  NOT_READY
+  NOT_A_FIT
+}
