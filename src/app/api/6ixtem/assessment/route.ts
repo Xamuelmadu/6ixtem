@@ -1,11 +1,8 @@
-
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { qualifyAssessment } from "@/lib/6ixtem-qualification";
-
-export const runtime = "nodejs";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -99,18 +96,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function cleanString(value: unknown): string | null {
-  if (typeof value !== "string") return null;
+  if (typeof value !== "string") {
+    return null;
+  }
 
   const result = value.trim();
 
   return result.length ? result.slice(0, 2000) : null;
 }
 
-/**
- * Convert untrusted input into a Prisma-compatible JSON array.
- * JSON serialization also rejects non-JSON values such as undefined
- * properties and circular references.
- */
 function cleanArray(value: unknown): Prisma.InputJsonArray {
   if (!Array.isArray(value)) {
     return [];
@@ -126,9 +120,6 @@ function cleanArray(value: unknown): Prisma.InputJsonArray {
   return parsed as Prisma.InputJsonArray;
 }
 
-/**
- * Convert untrusted input into a Prisma-compatible JSON object.
- */
 function cleanObject(value: unknown): Prisma.InputJsonObject {
   if (!isRecord(value)) {
     return {};
@@ -149,14 +140,14 @@ export async function POST(request: Request) {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "The AI assessment service is not configured." },
-        { status: 503 },
+        { status: 503 }
       );
     }
 
     if (!process.env.DATABASE_URL) {
       return NextResponse.json(
         { error: "The assessment database is not configured." },
-        { status: 503 },
+        { status: 503 }
       );
     }
 
@@ -167,14 +158,14 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json(
         { error: "The request body must contain valid JSON." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (!isRecord(body)) {
       return NextResponse.json(
         { error: "Invalid request body." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -191,14 +182,14 @@ export async function POST(request: Request) {
     if (!/^[a-zA-Z0-9_-]{10,100}$/.test(sessionId)) {
       return NextResponse.json(
         { error: "Invalid assessment session." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (!["yes", "maybe", "no"].includes(investmentReadiness)) {
       return NextResponse.json(
         { error: "Invalid investment readiness value." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -208,14 +199,14 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { error: "A conversation message is required." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (incomingMessages.length > 80) {
       return NextResponse.json(
         { error: "The assessment has reached its message limit." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -231,7 +222,7 @@ export async function POST(request: Request) {
       ) {
         return NextResponse.json(
           { error: "One or more messages are invalid." },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
@@ -244,14 +235,10 @@ export async function POST(request: Request) {
     if (messages[messages.length - 1].role !== "user") {
       return NextResponse.json(
         { error: "The latest message must come from the prospect." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    /*
-     * Investment readiness is supplied separately as authoritative
-     * checkpoint information. The model must not override it.
-     */
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
       temperature: 0.3,
@@ -290,7 +277,7 @@ export async function POST(request: Request) {
       !isRecord(output.assessment)
     ) {
       throw new Error(
-        "The AI response did not match the expected format.",
+        "The AI response did not match the expected format."
       );
     }
 
@@ -305,23 +292,23 @@ export async function POST(request: Request) {
       investmentReadiness,
 
       businessProfile: cleanObject(
-        assessment.businessProfile,
+        assessment.businessProfile
       ),
 
       operationalChallenges: cleanArray(
-        assessment.operationalChallenges,
+        assessment.operationalChallenges
       ),
 
       currentTools: cleanArray(
-        assessment.currentTools,
+        assessment.currentTools
       ),
 
       requirements: cleanArray(
-        assessment.requirements,
+        assessment.requirements
       ),
 
       assessmentSummary: cleanString(
-        assessment.assessmentSummary,
+        assessment.assessmentSummary
       ),
     };
 
@@ -343,12 +330,6 @@ export async function POST(request: Request) {
       },
     ];
 
-    /*
-     * Persist the assessment.
-     *
-     * Prisma.InputJsonObject and Prisma.InputJsonArray above ensure
-     * the JSON fields have types accepted by Prisma Client 6.
-     */
     const saved = await prisma.assessment.upsert({
       where: {
         sessionId,
@@ -446,7 +427,7 @@ export async function POST(request: Request) {
         error:
           "We could not process that response. Please try again.",
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
