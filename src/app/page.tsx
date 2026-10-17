@@ -330,7 +330,7 @@ export default function HomePage() {
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="container-main flex flex-col gap-4 py-7 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} 6ixtem. Business systems, thoughtfully designed.</p>
+          <p>© 2026 6ixtem. Business systems, thoughtfully designed.</p>
           <p>Built around the way your business works.</p>
         </div>
       </footer>
