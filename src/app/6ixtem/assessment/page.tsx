@@ -62,7 +62,7 @@ export default function AssessmentEntryPage() {
               </span>
               <div>
                 <h2 className="text-xl font-bold text-slate-900">
-                  Is your business prepared to consider an implementation starting from ₦1,500,000?
+                  Is your business prepared to consider an implementation starting from $2000?
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   The final investment depends on the agreed requirements,
