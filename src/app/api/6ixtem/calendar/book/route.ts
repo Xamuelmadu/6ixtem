@@ -11,9 +11,6 @@ import {
   isValidConsultationSlot,
 } from "@/lib/6ixtem-google-calendar";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 function isRecord(
   value: unknown,
 ): value is Record<string, unknown> {
