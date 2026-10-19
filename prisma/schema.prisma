@@ -45,6 +45,7 @@ model Assessment {
   teamSize            String?
   decisionMaker       String?
   investmentReadiness String?
+  bookings Booking[]
 
   businessProfile       Json?
   operationalChallenges Json?
@@ -78,4 +79,47 @@ enum QualificationStatus {
   NEEDS_REVIEW
   NOT_READY
   NOT_A_FIT
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  assessmentId String
+  assessment   Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+
+  attendeeName  String
+  attendeeEmail String
+
+  startAt  DateTime
+  endAt    DateTime
+  timeZone String
+
+  status BookingStatus @default(BOOKED)
+
+  googleEventId String? @unique
+  meetUrl       String?
+
+  cancelledAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assessmentId])
+  @@index([startAt, endAt])
+  @@index([status, startAt])
+}
+
+enum BookingStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+  RESCHEDULED
+}
+
+model GoogleCalendarConnection {
+  id           String   @id @default(cuid())
+  calendarId   String   @default("primary")
+  refreshToken String
+  connected    Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

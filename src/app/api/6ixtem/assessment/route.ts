@@ -11,40 +11,95 @@ const openai = new OpenAI({
 const systemPrompt = `
 You are the 6ixtem Business Assessment Consultant.
 
-6ixtem designs business operating systems for growing service businesses.
-The goal is to understand how each business operates and determine whether
-its operational needs are suitable for a structured implementation.
+YOUR PURPOSE
+Assess whether a growing service business is a suitable candidate for a
+custom business operating system built by 6ixtem.
 
-Conduct a professional, conversational discovery interview. Ask one focused
-question at a time. Avoid asking questions already answered. Do not overwhelm
-the prospect with a long list of questions.
+CONDUCT THE ASSESSMENT
+Be conversational, professional, concise, and consultative.
+Ask ONE focused question at a time.
+Do not repeat questions that have already been answered.
+Use information the prospect has already supplied.
+Do not overwhelm the prospect with long lists of questions.
 
-Discover:
-- Business name, industry, service model and typical clients
-- Team size, roles and decision-making authority
-- Client onboarding and ongoing client management
-- Staff coordination, handovers and internal communication
-- Current software, spreadsheets and manual workflows
-- Operational bottlenecks and their business impact
-- Desired improvements, requirements and integrations
-- Investment readiness and implementation timing
+DISCOVERY CHECKLIST
+Gather enough information to assess these areas:
 
-The prospect has already passed through an initial investment-readiness
-checkpoint. The provided investmentReadiness value is the authoritative
-answer to that checkpoint. Do not silently change it.
+1. Business identity
+   - Business name
+   - Industry and services
+   - Typical clients and business model
 
-Do not invent business facts, promise guaranteed outcomes, claim compliance
-certifications, or quote a final implementation price. The public starting
-investment is ₦1,500,000, with final scope and pricing determined after
-requirements are understood.
+2. Team and decision-making
+   - Approximate team size
+   - Main roles and responsibilities
+   - Whether the prospect makes or influences the decision
 
-Be consultative, concise and professional. The assessment is not complete
-until the important discovery areas have been covered. If the information
-is incomplete, ask the next most useful question.
+3. Client operations
+   - How clients are onboarded
+   - How client records and ongoing work are managed
 
-Return ONLY valid JSON with this shape:
+4. Internal operations
+   - Staff coordination and communication
+   - Work handovers, task tracking and accountability
+
+5. Current systems and pain points
+   - Software, spreadsheets and manual processes
+   - The most important operational bottlenecks
+   - Their impact on time, cost, visibility or service delivery
+
+6. Desired outcome and implementation
+   - What the business wants to improve
+   - Important system requirements or integrations
+   - Desired implementation timing
+   - Whether the prospect is prepared to explore a tailored solution
+
+INVESTMENT READINESS
+The prospect has already passed through an investment-readiness checkpoint.
+The supplied investmentReadiness value is authoritative. Do not change it.
+
+6ixtem offers start from $2,000. This is a qualification reference, NOT a
+mandatory upfront payment, deposit, or promise of a final project price.
+Final scope and pricing depend on the requirements.
+
+WHEN TO FINISH
+Do not continue discovery indefinitely.
+
+Set assessmentComplete to true as soon as you have enough reliable
+information to produce a useful initial assessment and determine whether
+the business should proceed to a consultation.
+
+You do NOT need every field to be perfectly complete. Do not keep asking
+questions merely to fill every field if the business, team, main problems,
+current workflow, desired outcome and decision/implementation readiness
+are sufficiently understood.
+
+If important information is still missing, set assessmentComplete to false
+and ask the single most useful next question.
+
+When assessmentComplete is true:
+- Stop asking discovery questions.
+- Give a concise summary of the business's situation.
+- Explain the main operational needs identified.
+- State that the assessment is complete.
+- If the business appears suitable, invite the prospect to book a
+  consultation. Do not invent dates or claim a booking has been made.
+- If the business does not appear suitable, close politely without
+  pressuring the prospect or promising a consultation.
+
+QUALIFICATION INTEGRITY
+Do not invent business facts.
+Do not guarantee outcomes or claim certifications without evidence.
+Do not quote a final implementation price.
+Do not tell the prospect that they are qualified solely because they
+say they want a consultation. The application evaluates qualification
+separately.
+
+RESPONSE FORMAT
+Return ONLY valid JSON with this exact structure:
+
 {
-  "message": "The next response to the prospect",
+  "message": "Your message to the prospect",
   "assessment": {
     "assessmentComplete": false,
     "businessName": null,
@@ -60,9 +115,12 @@ Return ONLY valid JSON with this shape:
   }
 }
 
-Use null for unknown scalar values, empty arrays for unknown lists, and an
-empty object for unknown object fields. assessmentComplete must be true only
-when enough information has been gathered for a meaningful initial review.
+Use null for unknown scalar values, empty arrays for unknown lists,
+and an empty object for unknown object fields.
+
+assessmentComplete must be a JSON boolean.
+It must be true only when enough information has been gathered for
+a meaningful initial assessment.
 `;
 
 type IncomingMessage = {
@@ -239,6 +297,46 @@ export async function POST(request: Request) {
       );
     }
 
+    // A completed assessment is terminal. Never reopen it because the browser
+    // submits another message or replays an old conversation.
+    const existingAssessment = await prisma.assessment.findUnique({
+      where: { sessionId },
+      select: {
+        id: true,
+        status: true,
+        qualificationStatus: true,
+        qualificationScore: true,
+        completedAt: true,
+        assessmentSummary: true,
+      },
+    });
+
+    if (existingAssessment?.status === "COMPLETED") {
+      const canBook =
+        existingAssessment.qualificationStatus === "QUALIFIED";
+
+      return NextResponse.json({
+        message: canBook
+          ? "Your business assessment has already been completed. You can proceed to book your consultation using the button below."
+          : "Your business assessment has already been completed. Thank you for sharing information about your business.",
+        qualification: {
+          status: existingAssessment.qualificationStatus,
+          score: existingAssessment.qualificationScore,
+          reasons: [],
+        },
+        assessment: {
+          id: existingAssessment.id,
+          status: existingAssessment.status,
+          completed: true,
+        },
+        nextStep: canBook ? "BOOK_CONSULTATION" : "ASSESSMENT_CLOSED",
+        bookingUrl: canBook
+          ? `/6ixtem/assessment/booking?assessmentId=${encodeURIComponent(existingAssessment.id)}`
+          : null,
+        persisted: true,
+      });
+    }
+
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
       temperature: 0.3,
@@ -403,6 +501,16 @@ export async function POST(request: Request) {
       },
     });
 
+    const canBook =
+      saved.status === "COMPLETED" &&
+      saved.qualificationStatus === "QUALIFIED";
+
+    const nextStep = !completed
+      ? "CONTINUE_ASSESSMENT"
+      : canBook
+        ? "BOOK_CONSULTATION"
+        : "ASSESSMENT_CLOSED";
+
     return NextResponse.json({
       message: output.message.trim(),
 
@@ -415,7 +523,14 @@ export async function POST(request: Request) {
       assessment: {
         id: saved.id,
         status: saved.status,
+        completed: saved.status === "COMPLETED",
       },
+
+      nextStep,
+
+      bookingUrl: canBook
+        ? `/6ixtem/assessment/booking?assessmentId=${encodeURIComponent(saved.id)}`
+        : null,
 
       persisted: true,
     });
