@@ -115,11 +115,12 @@ enum BookingStatus {
 }
 
 model GoogleCalendarConnection {
-  id           String   @id @default(cuid())
-  calendarId   String   @default("primary")
-  refreshToken String
-  connected    Boolean  @default(true)
+  id                    String   @id @default(cuid())
+  calendarId            String   @default("primary")
+  encryptedRefreshToken String
+  connectedEmail        String?
+  connected             Boolean  @default(true)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
