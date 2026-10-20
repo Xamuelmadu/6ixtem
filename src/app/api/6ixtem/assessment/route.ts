@@ -194,6 +194,8 @@ function cleanObject(value: unknown): Prisma.InputJsonObject {
 }
 
 export async function POST(request: Request) {
+  let stage = "request validation";
+
   try {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -299,6 +301,7 @@ export async function POST(request: Request) {
 
     // A completed assessment is terminal. Never reopen it because the browser
     // submits another message or replays an old conversation.
+    stage = "database lookup";
     const existingAssessment = await prisma.assessment.findUnique({
       where: { sessionId },
       select: {
@@ -337,6 +340,7 @@ export async function POST(request: Request) {
       });
     }
 
+    stage = "OpenAI request";
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
       temperature: 0.3,
@@ -428,6 +432,7 @@ export async function POST(request: Request) {
       },
     ];
 
+    stage = "saving assessment";
     const saved = await prisma.assessment.upsert({
       where: {
         sessionId,
@@ -535,7 +540,12 @@ export async function POST(request: Request) {
       persisted: true,
     });
   } catch (error) {
-    console.error("6ixtem assessment error:", error);
+    console.error("6ixtem assessment failure:", {
+      stage,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    });
 
     return NextResponse.json(
       {
