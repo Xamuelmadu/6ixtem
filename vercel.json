@@ -1,0 +1,9 @@
+
+{
+  "crons": [
+    {
+      "path": "/api/cron/6ixtem-emails",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

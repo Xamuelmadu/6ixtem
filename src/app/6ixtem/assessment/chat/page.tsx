@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -21,7 +22,7 @@ type ChatMessage = {
 type AssessmentResponse = {
   message: string;
   nextStep?: string;
-  bookingUrl?: string;
+  bookingUrl?: string | null;
   assessment?: {
     id?: string;
     status?: string;
@@ -37,6 +38,14 @@ type AssessmentResponse = {
 
 const SESSION_KEY = "6ixtem_assessment_session";
 const READINESS_KEY = "6ixtem_investment_readiness";
+
+type FunnelStep =
+  | "DISCOVERY"
+  | "AWAITING_CONSENT"
+  | "COLLECTING_NAME"
+  | "COLLECTING_EMAIL"
+  | "BOOKING_LINK_SENT"
+  | "ASSESSMENT_CLOSED";
 
 export default function AssessmentChatPage() {
   const [sessionId, setSessionId] = useState("");
@@ -54,14 +63,18 @@ export default function AssessmentChatPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [qualification, setQualification] = useState("");
-
-  const [assessmentComplete, setAssessmentComplete] = useState(false);
+  const [funnelStep, setFunnelStep] = useState<FunnelStep>("DISCOVERY");
+  const [assessmentId, setAssessmentId] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
-  const [completionType, setCompletionType] = useState<
-    "qualified" | "closed" | ""
-  >("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const isTerminal =
+    funnelStep === "BOOKING_LINK_SENT" ||
+    funnelStep === "ASSESSMENT_CLOSED";
+
+  const isAssessmentCompleted =
+    funnelStep !== "DISCOVERY";
 
   useEffect(() => {
     let id = sessionStorage.getItem(SESSION_KEY);
@@ -84,19 +97,40 @@ export default function AssessmentChatPage() {
     bottomRef.current?.scrollIntoView({
       behavior: "smooth",
     });
-  }, [messages, loading, assessmentComplete]);
+  }, [messages, loading, funnelStep]);
+
+  function getPlaceholder(): string {
+    switch (funnelStep) {
+      case "AWAITING_CONSENT":
+        return "Type yes or no...";
+      case "COLLECTING_NAME":
+        return "Enter your full name...";
+      case "COLLECTING_EMAIL":
+        return "Enter your email address...";
+      default:
+        return "Tell us about your business...";
+    }
+  }
+
+  function getInputLabel(): string {
+    switch (funnelStep) {
+      case "AWAITING_CONSENT":
+        return "Would you like to continue?";
+      case "COLLECTING_NAME":
+        return "Your name";
+      case "COLLECTING_EMAIL":
+        return "Your email address";
+      default:
+        return "Your response";
+    }
+  }
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const content = input.trim();
 
-    if (
-      !content ||
-      loading ||
-      !sessionId ||
-      assessmentComplete
-    ) {
+    if (!content || loading || !sessionId || isTerminal) {
       return;
     }
 
@@ -130,7 +164,7 @@ export default function AssessmentChatPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.error || "The assessment could not be continued.",
+          data.error || "The assessment could not be continued."
         );
       }
 
@@ -148,46 +182,63 @@ export default function AssessmentChatPage() {
         setQualification(data.qualification.status);
       }
 
-      /*
-       * TERMINAL ASSESSMENT HANDLING
-       *
-       * The API must return one of these nextStep values:
-       *
-       * CONTINUE_ASSESSMENT
-       * BOOK_CONSULTATION
-       * ASSESSMENT_CLOSED
-       *
-       * Only BOOK_CONSULTATION with a valid bookingUrl
-       * displays the booking button.
-       */
+      if (data.assessment?.id) {
+        setAssessmentId(data.assessment.id);
+      }
 
-      const isTerminalStep =
-        data.nextStep === "BOOK_CONSULTATION" ||
-        data.nextStep === "ASSESSMENT_CLOSED";
+      const nextStep = data.nextStep;
 
-      const isCompleted = data.assessment?.completed === true;
-
-      if (isTerminalStep || isCompleted) {
-        setAssessmentComplete(true);
-
-        const canBook =
-          data.nextStep === "BOOK_CONSULTATION" &&
-          typeof data.bookingUrl === "string" &&
-          data.bookingUrl.trim().length > 0;
-
-        if (canBook) {
-          setBookingUrl(data.bookingUrl!.trim());
-          setCompletionType("qualified");
-        } else {
+      switch (nextStep) {
+        case "CONTINUE_ASSESSMENT":
+          setFunnelStep("DISCOVERY");
           setBookingUrl("");
-          setCompletionType("closed");
-        }
+          break;
+
+        case "AWAITING_CONSENT":
+          setFunnelStep("AWAITING_CONSENT");
+          setBookingUrl("");
+          break;
+
+        case "COLLECTING_NAME":
+          setFunnelStep("COLLECTING_NAME");
+          setBookingUrl("");
+          break;
+
+        case "COLLECTING_EMAIL":
+          setFunnelStep("COLLECTING_EMAIL");
+          setBookingUrl("");
+          break;
+
+        case "BOOKING_LINK_SENT":
+          setFunnelStep("BOOKING_LINK_SENT");
+          setBookingUrl(
+            typeof data.bookingUrl === "string" ? data.bookingUrl : ""
+          );
+          break;
+
+        case "ASSESSMENT_CLOSED":
+          setFunnelStep("ASSESSMENT_CLOSED");
+          setBookingUrl("");
+          break;
+
+        default:
+          // Older responses may not include nextStep. Do not lock the
+          // conversation merely because assessment.completed is true:
+          // qualified prospects still need to give consent and provide
+          // their contact details.
+          if (
+            data.assessment?.completed &&
+            data.qualification?.status &&
+            data.qualification.status !== "QUALIFIED"
+          ) {
+            setFunnelStep("ASSESSMENT_CLOSED");
+          }
       }
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Something went wrong. Please try again.",
+          : "Something went wrong. Please try again."
       );
     } finally {
       setLoading(false);
@@ -205,7 +256,6 @@ export default function AssessmentChatPage() {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white">
               <Command size={19} />
             </span>
-
             6ixtem
             <span className="text-blue-600">.</span>
           </Link>
@@ -224,8 +274,6 @@ export default function AssessmentChatPage() {
 
       <div className="container-main grid flex-1 gap-6 py-8 lg:grid-cols-[minmax(0,1fr)_290px]">
         <section className="flex min-h-[70vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          {/* Chat header */}
-
           <div className="flex items-center gap-3 border-b border-slate-100 p-5 sm:px-7">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white">
               <Bot size={23} />
@@ -243,16 +291,22 @@ export default function AssessmentChatPage() {
 
             <span
               className={`ml-auto rounded-full px-3 py-1.5 text-xs font-bold ${
-                assessmentComplete
+                isTerminal
                   ? "bg-slate-100 text-slate-700"
-                  : "bg-blue-50 text-blue-700"
+                  : isAssessmentCompleted
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-blue-50 text-blue-700"
               }`}
             >
-              {assessmentComplete ? "Completed" : "Interactive"}
+              {funnelStep === "BOOKING_LINK_SENT"
+                ? "Email sent"
+                : funnelStep === "ASSESSMENT_CLOSED"
+                  ? "Concluded"
+                  : isAssessmentCompleted
+                    ? "Assessment complete"
+                    : "Interactive"}
             </span>
           </div>
-
-          {/* Conversation */}
 
           <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-7">
             {messages.map((message, index) => (
@@ -294,15 +348,14 @@ export default function AssessmentChatPage() {
                   size={17}
                   className="animate-spin text-blue-600"
                 />
-
-                Reviewing your response...
+                {funnelStep === "DISCOVERY"
+                  ? "Reviewing your response..."
+                  : "Processing your response..."}
               </div>
             )}
 
             <div ref={bottomRef} />
           </div>
-
-          {/* API errors */}
 
           {error && (
             <div className="mx-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 sm:mx-7">
@@ -310,87 +363,114 @@ export default function AssessmentChatPage() {
             </div>
           )}
 
-          {/* Terminal assessment screen */}
-
-          {assessmentComplete ? (
+          {funnelStep === "BOOKING_LINK_SENT" && (
             <div className="border-t border-slate-100 bg-slate-50 p-5 sm:p-6">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="rounded-2xl border border-emerald-200 bg-white p-5 sm:p-6">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
                     <CheckCircle2 size={22} />
                   </span>
 
                   <div>
                     <h2 className="font-bold text-slate-900">
-                      {completionType === "qualified"
-                        ? "Your assessment is complete"
-                        : "Your assessment has concluded"}
+                      Check your email
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {completionType === "qualified"
-                        ? "Thank you. Based on your responses, the next step is to book a consultation with the 6ixtem team. Choose an available time on the booking page."
-                        : "Thank you for sharing information about your business. Based on the assessment outcome, a consultation booking is not available at this stage."}
+                      Your assessment confirmation and consultation booking
+                      link have been sent. Open the email and use the link
+                      to choose a suitable consultation time. If it is not
+                      in your inbox, check your spam or junk folder.
                     </p>
                   </div>
                 </div>
 
-                {completionType === "qualified" && bookingUrl && (
+                {bookingUrl && (
                   <Link
                     href={bookingUrl}
                     className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 sm:w-auto"
                   >
-                    Continue to booking
-                    <ArrowUp
-                      size={16}
-                      className="rotate-45"
-                    />
-                  </Link>
-                )}
-
-                {completionType === "qualified" && !bookingUrl && (
-                  <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                    Your assessment is complete, but the booking link was
-                    not returned. Please contact the 6ixtem team for
-                    assistance.
-                  </p>
-                )}
-
-                {completionType === "closed" && (
-                  <Link
-                    href="/6ixtem"
-                    className="mt-5 inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    Return to 6ixtem
+                    Open booking page
+                    <ArrowUp size={16} className="rotate-45" />
                   </Link>
                 )}
               </div>
             </div>
-          ) : (
-            /* Active assessment input */
+          )}
 
+          {funnelStep === "ASSESSMENT_CLOSED" && (
+            <div className="border-t border-slate-100 bg-slate-50 p-5 sm:p-6">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+                    <CheckCircle2 size={22} />
+                  </span>
+
+                  <div>
+                    <h2 className="font-bold text-slate-900">
+                      Thank you for your time
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      This assessment session has concluded. You are welcome
+                      to return to 6ixtem whenever you are ready to explore
+                      your business requirements further.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/6ixtem"
+                  className="mt-5 inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Return to 6ixtem
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {!isTerminal && (
             <form
               onSubmit={sendMessage}
               className="border-t border-slate-100 p-4 sm:p-6"
             >
+              {funnelStep === "AWAITING_CONSENT" && (
+                <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800">
+                  You can continue to receive your assessment and booking
+                  link, or decline without providing contact details.
+                </div>
+              )}
+
+              <label
+                htmlFor="assessment-message"
+                className="mb-2 block text-xs font-semibold text-slate-500"
+              >
+                {getInputLabel()}
+              </label>
+
               <div className="flex items-end gap-3 rounded-xl border border-slate-200 bg-white p-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
                 <textarea
+                  id="assessment-message"
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
-                    if (
-                      event.key === "Enter" &&
-                      !event.shiftKey
-                    ) {
+                    if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
                       event.currentTarget.form?.requestSubmit();
                     }
                   }}
                   rows={2}
                   maxLength={5000}
-                  placeholder="Tell us about your business..."
+                  placeholder={getPlaceholder()}
+                  autoComplete={
+                    funnelStep === "COLLECTING_EMAIL"
+                      ? "email"
+                      : funnelStep === "COLLECTING_NAME"
+                        ? "name"
+                        : "off"
+                  }
                   className="max-h-36 min-h-[48px] flex-1 resize-y bg-transparent px-3 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
-                  disabled={loading || !sessionId || assessmentComplete}
+                  disabled={loading || !sessionId}
                 />
 
                 <button
@@ -398,8 +478,7 @@ export default function AssessmentChatPage() {
                   disabled={
                     loading ||
                     !input.trim() ||
-                    !sessionId ||
-                    assessmentComplete
+                    !sessionId
                   }
                   aria-label="Send response"
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
@@ -421,8 +500,6 @@ export default function AssessmentChatPage() {
             </form>
           )}
         </section>
-
-        {/* Assessment sidebar */}
 
         <aside className="space-y-4">
           <div className="surface-card p-5">
@@ -447,7 +524,6 @@ export default function AssessmentChatPage() {
                     size={17}
                     className="mt-0.5 shrink-0 text-blue-600"
                   />
-
                   {item}
                 </div>
               ))}
@@ -456,30 +532,32 @@ export default function AssessmentChatPage() {
 
           <div className="surface-card p-5">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-              <ShieldCheck
-                size={18}
-                className="text-blue-600"
-              />
-
+              <ShieldCheck size={18} className="text-blue-600" />
               Your assessment
             </div>
 
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Your responses help us understand whether the 6ixtem
-              approach matches your business. Qualification is not a
-              guarantee of acceptance or a final implementation quote.
+              Your responses help us understand whether the 6ixtem approach
+              matches your business. Qualification is not a guarantee of
+              acceptance or a final implementation quote.
             </p>
 
             {qualification && (
               <p className="mt-4 rounded-lg bg-blue-50 p-3 text-xs font-bold text-blue-800">
-                Current assessment status:{" "}
-                {qualification.replaceAll("_", " ")}
+                Assessment status: {qualification.replaceAll("_", " ")}
               </p>
             )}
 
-            {assessmentComplete && (
-              <p className="mt-3 rounded-lg bg-slate-100 p-3 text-xs font-semibold text-slate-700">
-                This assessment session is closed.
+            {isAssessmentCompleted && !isTerminal && (
+              <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">
+                Assessment complete. Follow the conversation to finish the
+                next steps.
+              </p>
+            )}
+
+            {assessmentId && (
+              <p className="mt-3 break-all text-xs text-slate-400">
+                Assessment reference: {assessmentId}
               </p>
             )}
           </div>
