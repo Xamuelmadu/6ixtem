@@ -1,327 +1,1196 @@
-import crypto from "node:crypto";
+﻿import crypto from "node:crypto";
+
 import { NextResponse } from "next/server";
+
+
 
 import { prisma } from "@/lib/prisma";
 
+
+
 import {
+
   CONSULTATION_MINUTES,
+
   CONSULTATION_TIME_ZONE,
+
   getBusyIntervals,
+
   getCalendarClient,
+
   isValidConsultationSlot,
+
 } from "@/lib/6ixtem-google-calendar";
 
+
+
+import {
+
+  send6ixtemEmail,
+
+  getAdminNotificationEmail,
+
+  emailLayout,
+
+  escapeHtml,
+
+  emailText,
+
+} from "@/lib/6ixtem-email";
+
+
+
 function isRecord(
+
   value: unknown,
+
 ): value is Record<string, unknown> {
+
   return (
+
     typeof value === "object" &&
+
     value !== null &&
+
     !Array.isArray(value)
+
   );
+
 }
 
-export async function POST(request: Request) {
-  let createdEventId: string | null = null;
+
+
+function isValidEmail(value: string): boolean {
+
+  return (
+
+    value.length <= 254 &&
+
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+
+  );
+
+}
+
+
+
+function formatDateTime(date: Date): string {
+
+  return new Intl.DateTimeFormat("en-IE", {
+
+    dateStyle: "full",
+
+    timeStyle: "short",
+
+    timeZone: CONSULTATION_TIME_ZONE,
+
+  }).format(date);
+
+}
+
+
+
+function getSiteUrl(): string {
+
+  return (
+
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+
+    "https://6ixtem.com"
+
+  );
+
+}
+
+
+
+async function sendBookingEmails(input: {
+
+  bookingId: string;
+
+  assessmentId: string;
+
+  attendeeName: string;
+
+  attendeeEmail: string;
+
+  businessName: string | null;
+
+  startAt: Date;
+
+  endAt: Date;
+
+  meetUrl: string | null;
+
+}): Promise<{
+
+  attendeeEmailSent: boolean;
+
+  adminEmailSent: boolean;
+
+}> {
+
+  const {
+
+    bookingId,
+
+    assessmentId,
+
+    attendeeName,
+
+    attendeeEmail,
+
+    businessName,
+
+    startAt,
+
+    endAt,
+
+    meetUrl,
+
+  } = input;
+
+
+
+  const dateTime = formatDateTime(startAt);
+
+  const endDateTime = formatDateTime(endAt);
+
+
+
+  const safeName = escapeHtml(attendeeName);
+
+  const safeBusiness = escapeHtml(
+
+    businessName || "Your business",
+
+  );
+
+  const safeDateTime = escapeHtml(dateTime);
+
+  const safeEndDateTime = escapeHtml(endDateTime);
+
+
+
+  const meetingSection = meetUrl
+
+    ? `<p><strong>Google Meet:</strong> <a href="${escapeHtml(meetUrl)}">${escapeHtml(meetUrl)}</a></p>`
+
+    : "<p>Your calendar invitation contains the meeting details. If the Google Meet link is not yet available, it may appear after Google finishes preparing the event.</p>";
+
+
+
+  const siteUrl = getSiteUrl();
+
+
+
+  let attendeeEmailSent = false;
+
+  let adminEmailSent = false;
+
+
+
+  // Send the attendee confirmation independently. A mail failure must
+
+  // not undo the saved booking or remove the calendar event.
 
   try {
-    let body: unknown;
+
+    await send6ixtemEmail({
+
+      to: attendeeEmail,
+
+      subject: "Your 6ixtem consultation is confirmed",
+
+      text: emailText(
+
+        [
+
+          `Hi ${attendeeName},`,
+
+          "",
+
+          "Your 6ixtem consultation has been booked successfully.",
+
+          "",
+
+          `Business: ${businessName || "Your business"}`,
+
+          `Start: ${dateTime}`,
+
+          `End: ${endDateTime}`,
+
+          `Time zone: ${CONSULTATION_TIME_ZONE}`,
+
+          meetUrl ? `Google Meet: ${meetUrl}` : "",
+
+          "",
+
+          "A calendar invitation has also been requested.",
+
+          `Booking reference: ${bookingId}`,
+
+          "",
+
+          `Visit 6ixtem: ${siteUrl}`,
+
+          "",
+
+          "The 6ixtem Team",
+
+        ]
+
+          .filter(Boolean)
+
+          .join("\n"),
+
+      ),
+
+      html: emailLayout(
+
+  "Your consultation is confirmed",
+
+  `
+
+    <h1>Your consultation is confirmed</h1>
+
+    <p>Hi ${safeName},</p>
+
+    <p>Your consultation with the 6ixtem team has been booked successfully.</p>
+
+
+
+    <div style="padding:16px;border:1px solid #e2e8f0;border-radius:12px;">
+
+      <p><strong>Business:</strong> ${safeBusiness}</p>
+
+      <p><strong>Starts:</strong> ${safeDateTime}</p>
+
+      <p><strong>Ends:</strong> ${safeEndDateTime}</p>
+
+      <p><strong>Time zone:</strong> ${escapeHtml(CONSULTATION_TIME_ZONE)}</p>
+
+      ${meetingSection}
+
+      <p><strong>Booking reference:</strong> ${escapeHtml(bookingId)}</p>
+
+    </div>
+
+
+
+    <p>A calendar invitation has also been requested. Please keep the invitation for your records.</p>
+
+    <p><a href="${escapeHtml(siteUrl)}">Visit 6ixtem</a></p>
+
+    <p>The 6ixtem Team</p>
+
+  `
+
+),
+
+    });
+
+
+
+    attendeeEmailSent = true;
+
+  } catch (error) {
+
+    console.error("6ixtem attendee booking email failed:", {
+
+      bookingId,
+
+      message:
+
+        error instanceof Error ? error.message : String(error),
+
+    });
+
+  }
+
+
+
+  // Admin notification is independent of attendee delivery.
+
+  const adminEmail = getAdminNotificationEmail();
+
+
+
+  if (adminEmail) {
 
     try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        {
-          error:
-            "Request body must be valid JSON.",
-        },
-        { status: 400 },
-      );
+
+      await send6ixtemEmail({
+
+        to: adminEmail,
+
+        subject: `New 6ixtem consultation booking â€” ${attendeeName}`,
+
+        text: emailText(
+
+          [
+
+            "A new 6ixtem consultation has been booked.",
+
+            "",
+
+            `Name: ${attendeeName}`,
+
+            `Email: ${attendeeEmail}`,
+
+            `Business: ${businessName || "Not provided"}`,
+
+            `Start: ${dateTime}`,
+
+            `End: ${endDateTime}`,
+
+            `Time zone: ${CONSULTATION_TIME_ZONE}`,
+
+            meetUrl ? `Google Meet: ${meetUrl}` : "Google Meet: Not available yet",
+
+            `Booking reference: ${bookingId}`,
+
+            `Assessment reference: ${assessmentId}`,
+
+          ].join("\n"),
+
+        ),
+
+        html: emailLayout(
+          "New 6ixtem consultation booking",
+          `
+          <h1>New consultation booking</h1>
+
+          <p>A prospect has booked a consultation with 6ixtem.</p>
+
+
+
+          <p><strong>Name:</strong> ${safeName}</p>
+
+          <p><strong>Email:</strong> ${escapeHtml(attendeeEmail)}</p>
+
+          <p><strong>Business:</strong> ${safeBusiness}</p>
+
+          <p><strong>Starts:</strong> ${safeDateTime}</p>
+
+          <p><strong>Ends:</strong> ${safeEndDateTime}</p>
+
+          <p><strong>Time zone:</strong> ${escapeHtml(CONSULTATION_TIME_ZONE)}</p>
+
+          ${meetingSection}
+
+          <p><strong>Booking reference:</strong> ${escapeHtml(bookingId)}</p>
+
+          <p><strong>Assessment reference:</strong> ${escapeHtml(assessmentId)}</p>
+
+        `),
+
+      });
+
+
+
+      adminEmailSent = true;
+
+    } catch (error) {
+
+      console.error("6ixtem admin booking email failed:", {
+
+        bookingId,
+
+        message:
+
+          error instanceof Error ? error.message : String(error),
+
+      });
+
     }
+
+  } else {
+
+    console.warn(
+
+      "6ixtem admin booking email skipped: LEAD_NOTIFICATION_EMAIL is not configured.",
+
+    );
+
+  }
+
+
+
+  return {
+
+    attendeeEmailSent,
+
+    adminEmailSent,
+
+  };
+
+}
+
+
+
+export async function POST(request: Request) {
+
+  let createdEventId: string | null = null;
+
+  let calendarIdForCleanup: string | null = null;
+
+  let bookingPersisted = false;
+
+
+
+  try {
+
+    let body: unknown;
+
+
+
+    try {
+
+      body = await request.json();
+
+    } catch {
+
+      return NextResponse.json(
+
+        { error: "Request body must be valid JSON." },
+
+        { status: 400 },
+
+      );
+
+    }
+
+
 
     if (!isRecord(body)) {
+
       return NextResponse.json(
+
         { error: "Invalid request body." },
+
         { status: 400 },
+
       );
+
     }
 
+
+
     const assessmentId =
+
       typeof body.assessmentId === "string"
+
         ? body.assessmentId.trim()
+
         : "";
 
-    const attendeeName =
+
+
+    const submittedName =
+
       typeof body.attendeeName === "string"
+
         ? body.attendeeName.trim()
+
         : "";
 
-    const attendeeEmail =
+
+
+    const submittedEmail =
+
       typeof body.attendeeEmail === "string"
+
         ? body.attendeeEmail.trim().toLowerCase()
+
         : "";
+
+
 
     const startAtRaw =
+
       typeof body.startAt === "string"
+
         ? body.startAt
+
         : "";
+
+
 
     const startAt = new Date(startAtRaw);
 
+
+
     if (
+
       !assessmentId ||
-      attendeeName.length < 2 ||
-      attendeeName.length > 120 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        attendeeEmail,
-      ) ||
-      attendeeEmail.length > 254 ||
+
       !Number.isFinite(startAt.getTime()) ||
+
       !isValidConsultationSlot(startAt)
+
     ) {
+
       return NextResponse.json(
+
         {
+
           error:
-            "Provide valid booking details and choose a valid future consultation slot.",
+
+            "Provide a valid assessment and choose a valid future consultation slot.",
+
         },
+
         { status: 400 },
+
       );
+
     }
 
-    const assessment =
-      await prisma.assessment.findUnique({
-        where: {
-          id: assessmentId,
-        },
 
-        select: {
-          id: true,
-          status: true,
-          qualificationStatus: true,
-          businessName: true,
-          assessmentSummary: true,
-        },
-      });
 
     if (
-      !assessment ||
-      assessment.status !== "COMPLETED" ||
-      assessment.qualificationStatus !== "QUALIFIED"
+
+      (submittedName && (
+
+        submittedName.length < 2 ||
+
+        submittedName.length > 120
+
+      )) ||
+
+      (submittedEmail && !isValidEmail(submittedEmail))
+
     ) {
+
       return NextResponse.json(
-        {
-          error:
-            "This assessment is not eligible for booking.",
-        },
-        { status: 403 },
+
+        { error: "Please provide a valid name and email address." },
+
+        { status: 400 },
+
       );
+
     }
+
+
+
+    const assessment = await prisma.assessment.findUnique({
+
+      where: { id: assessmentId },
+
+      select: {
+
+        id: true,
+
+        status: true,
+
+        qualificationStatus: true,
+
+        businessName: true,
+
+        assessmentSummary: true,
+
+        contactName: true,
+
+        contactEmail: true,
+
+        funnelState: true,
+
+      },
+
+    });
+
+
+
+    if (
+
+      !assessment ||
+
+      assessment.status !== "COMPLETED" ||
+
+      assessment.qualificationStatus !== "QUALIFIED"
+
+    ) {
+
+      return NextResponse.json(
+
+        { error: "This assessment is not eligible for booking." },
+
+        { status: 403 },
+
+      );
+
+    }
+
+
+
+    // Prefer contact details captured during the assessment funnel.
+
+    // If they exist, do not allow a booking request to substitute a
+
+    // different identity or email address.
+
+    const attendeeName =
+
+      assessment.contactName?.trim() || submittedName;
+
+
+
+    const attendeeEmail =
+
+      assessment.contactEmail?.trim().toLowerCase() ||
+
+      submittedEmail;
+
+
+
+    if (
+
+      !attendeeName ||
+
+      attendeeName.length < 2 ||
+
+      attendeeName.length > 120 ||
+
+      !attendeeEmail ||
+
+      !isValidEmail(attendeeEmail)
+
+    ) {
+
+      return NextResponse.json(
+
+        {
+
+          error:
+
+            "Please complete the assessment contact details before booking.",
+
+        },
+
+        { status: 400 },
+
+      );
+
+    }
+
+
+
+    if (
+
+      assessment.contactEmail &&
+
+      submittedEmail &&
+
+      submittedEmail !== assessment.contactEmail.trim().toLowerCase()
+
+    ) {
+
+      return NextResponse.json(
+
+        {
+
+          error:
+
+            "Please book using the email address associated with your assessment.",
+
+        },
+
+        { status: 400 },
+
+      );
+
+    }
+
+
 
     const endAt = new Date(
-      startAt.getTime() +
-        CONSULTATION_MINUTES * 60_000,
+
+      startAt.getTime() + CONSULTATION_MINUTES * 60_000,
+
     );
 
-    // Check existing bookings in the database.
-    const existing =
-      await prisma.booking.findFirst({
-        where: {
-          status: "BOOKED",
-          startAt: {
-            lt: endAt,
+
+
+    // Do not permit a second active booking for the same assessment.
+
+    const assessmentBooking = await prisma.booking.findFirst({
+
+      where: {
+
+        assessmentId,
+
+        status: "BOOKED",
+
+      },
+
+      select: {
+
+        id: true,
+
+        startAt: true,
+
+      },
+
+    });
+
+
+
+    if (assessmentBooking) {
+
+      return NextResponse.json(
+
+        {
+
+          error:
+
+            "This assessment already has a confirmed booking. Please contact the 6ixtem team if you need to change it.",
+
+          existingBooking: {
+
+            id: assessmentBooking.id,
+
+            startAt: assessmentBooking.startAt,
+
           },
-          endAt: {
-            gt: startAt,
-          },
+
         },
 
-        select: {
-          id: true,
-        },
-      });
+        { status: 409 },
+
+      );
+
+    }
+
+
+
+    // Check the database for overlapping active bookings.
+
+    const existing = await prisma.booking.findFirst({
+
+      where: {
+
+        status: "BOOKED",
+
+        startAt: { lt: endAt },
+
+        endAt: { gt: startAt },
+
+      },
+
+      select: { id: true },
+
+    });
+
+
 
     if (existing) {
+
       return NextResponse.json(
+
         {
+
           error:
+
             "That slot has just been booked. Please choose another time.",
+
         },
+
         { status: 409 },
+
       );
+
     }
 
-    // Recheck Google Calendar immediately before creation.
-    const busy = await getBusyIntervals(
-      startAt,
-      endAt,
-    );
+
+
+    // Recheck the connected Google Calendar before creating the event.
+
+    const busy = await getBusyIntervals(startAt, endAt);
+
+
 
     const overlaps = busy.some(
+
       (interval) =>
-        startAt < interval.end &&
-        endAt > interval.start,
+
+        startAt < interval.end && endAt > interval.start,
+
     );
+
+
 
     if (overlaps) {
+
       return NextResponse.json(
+
         {
+
           error:
+
             "That time is no longer available. Please choose another slot.",
+
         },
+
         { status: 409 },
+
       );
+
     }
 
-    const { calendar, calendarId } =
-      await getCalendarClient();
 
-    const eventResponse =
-      await calendar.events.insert({
-        calendarId,
-        conferenceDataVersion: 1,
-        sendUpdates: "all",
 
-        requestBody: {
-          summary:
-            `6ixtem Consultation${
-              assessment.businessName
-                ? ` — ${assessment.businessName}`
-                : ""
-            }`,
+    const { calendar, calendarId } = await getCalendarClient();
 
-          description: [
-            "6ixtem business operations consultation.",
-            `Assessment reference: ${assessment.id}`,
-            assessment.assessmentSummary
-              ? `Assessment summary: ${assessment.assessmentSummary.slice(0, 1500)}`
-              : "",
-          ]
-            .filter(Boolean)
-            .join("\n\n"),
+    calendarIdForCleanup = calendarId;
 
-          start: {
-            dateTime: startAt.toISOString(),
-            timeZone: CONSULTATION_TIME_ZONE,
-          },
 
-          end: {
-            dateTime: endAt.toISOString(),
-            timeZone: CONSULTATION_TIME_ZONE,
-          },
 
-          attendees: [
-            {
-              email: attendeeEmail,
-              displayName: attendeeName,
-            },
-          ],
+    const eventResponse = await calendar.events.insert({
 
-          conferenceData: {
-            createRequest: {
-              requestId: crypto.randomUUID(),
+      calendarId,
 
-              conferenceSolutionKey: {
-                type: "hangoutsMeet",
-              },
-            },
-          },
+      conferenceDataVersion: 1,
+
+      sendUpdates: "all",
+
+      requestBody: {
+
+        summary: `6ixtem Consultation${
+
+          assessment.businessName
+
+            ? ` â€” ${assessment.businessName}`
+
+            : ""
+
+        }`,
+
+        description: [
+
+          "6ixtem business operations consultation.",
+
+          `Assessment reference: ${assessment.id}`,
+
+          assessment.assessmentSummary
+
+            ? `Assessment summary: ${assessment.assessmentSummary.slice(0, 1500)}`
+
+            : "",
+
+        ]
+
+          .filter(Boolean)
+
+          .join("\n\n"),
+
+        start: {
+
+          dateTime: startAt.toISOString(),
+
+          timeZone: CONSULTATION_TIME_ZONE,
+
         },
-      });
 
-    createdEventId =
-      eventResponse.data.id ?? null;
+        end: {
+
+          dateTime: endAt.toISOString(),
+
+          timeZone: CONSULTATION_TIME_ZONE,
+
+        },
+
+        attendees: [
+
+          {
+
+            email: attendeeEmail,
+
+            displayName: attendeeName,
+
+          },
+
+        ],
+
+        conferenceData: {
+
+          createRequest: {
+
+            requestId: crypto.randomUUID(),
+
+            conferenceSolutionKey: {
+
+              type: "hangoutsMeet",
+
+            },
+
+          },
+
+        },
+
+      },
+
+    });
+
+
+
+    createdEventId = eventResponse.data.id ?? null;
+
+
 
     if (!createdEventId) {
+
       throw new Error(
+
         "Google Calendar did not return an event ID.",
+
       );
+
     }
 
-    // Conference creation can be asynchronous.
-    const refreshed =
-      await calendar.events.get({
+
+
+    // Conference creation may be asynchronous. Retrieve the event
+
+    // again to obtain a Meet URL when it is already available.
+
+    let refreshedEvent = eventResponse.data;
+
+
+
+    try {
+
+      const refreshed = await calendar.events.get({
+
         calendarId,
+
         eventId: createdEventId,
+
       });
+
+
+
+      refreshedEvent = refreshed.data;
+
+    } catch (error) {
+
+      console.warn(
+
+        "Could not refresh Google Calendar event details yet:",
+
+        error,
+
+      );
+
+    }
+
+
 
     const meetUrl =
-      refreshed.data.hangoutLink ??
-      refreshed.data.conferenceData?.entryPoints?.find(
-        (entry) =>
-          entry.entryPointType === "video",
+
+      refreshedEvent.hangoutLink ??
+
+      refreshedEvent.conferenceData?.entryPoints?.find(
+
+        (entry) => entry.entryPointType === "video",
+
       )?.uri ??
+
       null;
 
-    const booking =
-      await prisma.booking.create({
-        data: {
-          assessmentId,
-          attendeeName,
-          attendeeEmail,
-          startAt,
-          endAt,
-          timeZone: CONSULTATION_TIME_ZONE,
-          status: "BOOKED",
-          googleEventId: createdEventId,
-          meetUrl,
-        },
 
-        select: {
-          id: true,
-          attendeeName: true,
-          attendeeEmail: true,
-          startAt: true,
-          endAt: true,
-          timeZone: true,
-          status: true,
-          meetUrl: true,
-        },
-      });
 
-    return NextResponse.json(
-      {
-        booking,
-        calendarEventId: createdEventId,
+    // Persist the booking before attempting email delivery.
+
+    const booking = await prisma.booking.create({
+
+      data: {
+
+        assessmentId,
+
+        attendeeName,
+
+        attendeeEmail,
+
+        startAt,
+
+        endAt,
+
+        timeZone: CONSULTATION_TIME_ZONE,
+
+        status: "BOOKED",
+
+        googleEventId: createdEventId,
+
         meetUrl,
 
-        message: meetUrl
-          ? "Your consultation is booked. A calendar invitation has been sent."
-          : "Your calendar event and invitation were created. Google Meet details may take a short time to become available.",
       },
-      { status: 201 },
-    );
-  } catch (error) {
-    console.error(
-      "6ixtem booking error:",
-      error,
-    );
 
-    // Attempt to remove the Google event if
-    // database persistence failed after creation.
-    if (createdEventId) {
-      try {
-        const { calendar, calendarId } =
-          await getCalendarClient();
+      select: {
 
-        await calendar.events.delete({
-          calendarId,
-          eventId: createdEventId,
-          sendUpdates: "all",
-        });
-      } catch (cleanupError) {
-        console.error(
-          "Could not clean up the Google Calendar event:",
-          cleanupError,
-        );
-      }
-    }
+        id: true,
+
+        assessmentId: true,
+
+        attendeeName: true,
+
+        attendeeEmail: true,
+
+        startAt: true,
+
+        endAt: true,
+
+        timeZone: true,
+
+        status: true,
+
+        meetUrl: true,
+
+        googleEventId: true,
+
+      },
+
+    });
+
+
+
+    bookingPersisted = true;
+
+
+
+    // The booking is now committed. Email errors are caught separately
+
+    // and must never cause deletion of the confirmed calendar event.
+
+    const emailResults = await sendBookingEmails({
+
+      bookingId: booking.id,
+
+      assessmentId,
+
+      attendeeName,
+
+      attendeeEmail,
+
+      businessName: assessment.businessName,
+
+      startAt,
+
+      endAt,
+
+      meetUrl,
+
+    });
+
+
+
+    const message = emailResults.attendeeEmailSent
+
+      ? meetUrl
+
+        ? "Your consultation is booked. A confirmation email and calendar invitation have been sent."
+
+        : "Your consultation is booked and a confirmation email has been sent. Google Meet details may take a short time to become available."
+
+      : "Your consultation is booked, but we could not send the confirmation email. Your booking remains confirmed; please keep the booking reference and contact the 6ixtem team if needed.";
+
+
 
     return NextResponse.json(
+
       {
-        error:
-          "We could not complete the booking. Please refresh availability and try again.",
+
+        booking,
+
+        calendarEventId: createdEventId,
+
+        meetUrl,
+
+        email: {
+
+          attendeeSent: emailResults.attendeeEmailSent,
+
+          adminSent: emailResults.adminEmailSent,
+
+        },
+
+        message,
+
       },
-      { status: 500 },
+
+      { status: 201 },
+
     );
+
+  } catch (error) {
+
+    console.error("6ixtem booking error:", error);
+
+
+
+    // Only remove the Google event if booking persistence did not
+
+    // succeed. Email failures happen after persistence and are handled
+
+    // above, so they do not delete an otherwise valid booking.
+
+    if (
+
+      createdEventId &&
+
+      calendarIdForCleanup &&
+
+      !bookingPersisted
+
+    ) {
+
+      try {
+
+        const { calendar } = await getCalendarClient();
+
+
+
+        await calendar.events.delete({
+
+          calendarId: calendarIdForCleanup,
+
+          eventId: createdEventId,
+
+          sendUpdates: "all",
+
+        });
+
+      } catch (cleanupError) {
+
+        console.error(
+
+          "Could not clean up the Google Calendar event:",
+
+          cleanupError,
+
+        );
+
+      }
+
+    }
+
+
+
+    return NextResponse.json(
+
+      {
+
+        error:
+
+          "We could not complete the booking. Please refresh availability and try again.",
+
+      },
+
+      { status: 500 },
+
+    );
+
   }
+
 }
