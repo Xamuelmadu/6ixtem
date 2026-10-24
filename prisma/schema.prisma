@@ -35,9 +35,18 @@ model Assessment {
   leadId Int?  @unique
   lead   Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
-  status              AssessmentStatus     @default(IN_PROGRESS)
-  qualificationStatus QualificationStatus  @default(NEEDS_DISCOVERY)
-  qualificationScore  Int                  @default(0)
+  status              AssessmentStatus    @default(IN_PROGRESS)
+  qualificationStatus QualificationStatus @default(NEEDS_DISCOVERY)
+  qualificationScore  Int                 @default(0)
+  assessmentType String @default("BUSINESS_OS")
+
+  contactName  String?
+  contactEmail String?
+
+  funnelState AssessmentFunnelState @default(DISCOVERY)
+
+  assessmentEmailSentAt DateTime?
+  bookingLinkSentAt     DateTime?
 
   businessName        String?
   industry            String?
@@ -45,6 +54,7 @@ model Assessment {
   teamSize            String?
   decisionMaker       String?
   investmentReadiness String?
+
   bookings Booking[]
 
   businessProfile       Json?
@@ -81,10 +91,21 @@ enum QualificationStatus {
   NOT_A_FIT
 }
 
+enum AssessmentFunnelState {
+  DISCOVERY
+  QUALIFIED
+  AWAITING_CONSENT
+  COLLECTING_NAME
+  COLLECTING_EMAIL
+  BOOKING_LINK_SENT
+  DECLINED
+  CLOSED
+}
+
 model Booking {
-  id           String        @id @default(cuid())
+  id           String     @id @default(cuid())
   assessmentId String
-  assessment   Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
 
   attendeeName  String
   attendeeEmail String
@@ -97,6 +118,8 @@ model Booking {
 
   googleEventId String? @unique
   meetUrl       String?
+
+  emailDeliveries EmailDelivery[]
 
   cancelledAt DateTime?
   createdAt   DateTime @default(now())
@@ -115,12 +138,55 @@ enum BookingStatus {
 }
 
 model GoogleCalendarConnection {
-  id                    String   @id @default(cuid())
+  id                    String   @id @default("primary")
   calendarId            String   @default("primary")
   encryptedRefreshToken String
   connectedEmail        String?
   connected             Boolean  @default(true)
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailDelivery {
+  id     String @id @default(cuid())
+  key    String @unique
+  type   EmailDeliveryType
+  status EmailDeliveryStatus @default(PENDING)
+
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  recipient         String?
+  subject           String?
+  html              String?
+  text              String?
+  scheduledFor      DateTime
+  sentAt            DateTime?
+  providerMessageId String?
+
+  attempts  Int     @default(0)
+  lastError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([bookingId, type])
+}
+
+enum EmailDeliveryType {
+  BOOKING_REMINDER
+  POST_MEETING_FOLLOWUP
+  BOOKING_CONFIRMATION
+  ADMIN_BOOKING_NOTIFICATION
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULED
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
 }
