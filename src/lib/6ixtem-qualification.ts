@@ -29,7 +29,9 @@ function hasText(value: unknown): boolean {
 }
 
 function hasContent(value: unknown): boolean {
-  if (Array.isArray(value)) return value.length > 0;
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
 
   if (typeof value === "string") {
     return value.trim().length > 0;
@@ -54,61 +56,91 @@ export function qualifyAssessment(
     hasText(input.businessModel) &&
     hasText(input.teamSize);
 
-  const challengesIdentified = hasContent(input.operationalChallenges);
-  const requirementsIdentified = hasContent(input.requirements);
+  const challengesIdentified = hasContent(
+    input.operationalChallenges,
+  );
+
+  const requirementsIdentified = hasContent(
+    input.requirements,
+  );
+
   const decisionMakerKnown = hasText(input.decisionMaker);
 
-  const readiness = input.investmentReadiness?.toLowerCase().trim();
+  const readiness = input.investmentReadiness
+    ?.toLowerCase()
+    .trim();
 
   if (profileComplete) {
     score += 20;
     reasons.push("Core business profile identified.");
   } else {
-    reasons.push("More business profile information is required.");
+    reasons.push(
+      "More business profile information is required.",
+    );
   }
 
   if (challengesIdentified) {
     score += 25;
-    reasons.push("Operational challenges have been identified.");
+    reasons.push(
+      "Operational challenges have been identified.",
+    );
   } else {
-    reasons.push("Operational challenges require further discovery.");
+    reasons.push(
+      "Operational challenges require further discovery.",
+    );
   }
 
   if (requirementsIdentified) {
     score += 20;
-    reasons.push("Initial requirements have been identified.");
+    reasons.push(
+      "Initial requirements have been identified.",
+    );
   } else {
-    reasons.push("Required capabilities need clarification.");
+    reasons.push(
+      "Required capabilities need clarification.",
+    );
   }
 
   if (decisionMakerKnown) {
     score += 15;
-    reasons.push("Decision-making involvement has been discussed.");
+    reasons.push(
+      "Decision-making involvement has been discussed.",
+    );
   } else {
-    reasons.push("Decision-making authority needs clarification.");
+    reasons.push(
+      "Decision-making authority needs clarification.",
+    );
   }
 
   if (readiness === "yes") {
     score += 20;
-    reasons.push("Prospect indicates investment readiness.");
+    reasons.push(
+      "Prospect indicates investment readiness.",
+    );
   } else if (readiness === "maybe") {
     score += 10;
-    reasons.push("Investment readiness depends on the proposed scope.");
+    reasons.push(
+      "Investment readiness depends on the proposed scope.",
+    );
   }
 
   if (readiness === "no") {
     return {
       status: "NOT_READY",
       score,
-      reasons: [...reasons, "Prospect is not currently ready to invest."],
+      reasons: [
+        ...reasons,
+        "Prospect is not currently ready to invest.",
+      ],
     };
   }
 
-  if (
-    !input.assessmentComplete ||
-    !profileComplete
-  ) {
-    return { status: "NEEDS_DISCOVERY", score, reasons };
+  if (!input.assessmentComplete || !profileComplete) {
+    return {
+      status: "NEEDS_DISCOVERY",
+      score,
+      reasons,
+    };
   }
 
   if (
@@ -117,12 +149,29 @@ export function qualifyAssessment(
     !decisionMakerKnown ||
     !readiness
   ) {
-    return { status: "NEEDS_REVIEW", score, reasons };
+    return {
+      status: "NEEDS_REVIEW",
+      score,
+      reasons,
+    };
   }
 
-  if (score >= 80 && readiness === "yes") {
-    return { status: "QUALIFIED", score, reasons };
+  // A "maybe" prospect can qualify based on the same score
+  // threshold when the required assessment information is present.
+  if (score >= 80) {
+    return {
+      status: "QUALIFIED",
+      score,
+      reasons,
+    };
   }
 
-  return { status: "NEEDS_REVIEW", score, reasons };
+  return {
+    status: "NEEDS_REVIEW",
+    score,
+    reasons: [
+      ...reasons,
+      "The assessment requires further review before consultation.",
+    ],
+  };
 }

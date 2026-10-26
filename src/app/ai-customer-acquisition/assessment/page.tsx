@@ -13,10 +13,7 @@ export default function AssessmentPage() {
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <header className="border-b border-slate-200 bg-white">
         <nav className="container-main flex h-[72px] items-center justify-between">
-          <Link
-            href="/"
-            className="text-2xl font-black tracking-[-0.07em]"
-          >
+          <Link href="/" className="text-2xl font-black tracking-[-0.07em]">
             6ixtem<span className="text-blue-600">.</span>
           </Link>
 

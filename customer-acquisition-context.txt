@@ -1,0 +1,2304 @@
+6IXTEM CUSTOMER ACQUISITION INTEGRATION CONTEXT
+
+
+========== src/app/page.tsx ==========
+
+import Link from "next/link";
+import {
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  Blocks,
+  CheckCircle2,
+  ChevronRight,
+  CircleDot,
+  Command,
+  Database,
+  MessagesSquare,
+  Network,
+  ShieldCheck,
+  Workflow,
+  Zap,
+} from "lucide-react";
+
+const capabilities = [
+  {
+    icon: Network,
+    number: "01",
+    title: "Connected operations",
+    description:
+      "Connect teams, responsibilities, processes and operational information in one coordinated environment.",
+  },
+  {
+    icon: Database,
+    number: "02",
+    title: "Structured client management",
+    description:
+      "Keep client profiles, service history, documents and onboarding information organized and accessible.",
+  },
+  {
+    icon: MessagesSquare,
+    number: "03",
+    title: "Business communication",
+    description:
+      "Reduce scattered conversations and make important instructions easier to find, follow and act on.",
+  },
+  {
+    icon: Workflow,
+    number: "04",
+    title: "Workflow automation",
+    description:
+      "Identify repetitive work and introduce structured workflows, reminders and appropriate automation.",
+  },
+  {
+    icon: BarChart3,
+    number: "05",
+    title: "Operational visibility",
+    description:
+      "Build better visibility into responsibilities, progress, bottlenecks and the information needed to make decisions.",
+  },
+  {
+    icon: Blocks,
+    number: "06",
+    title: "Systems built around you",
+    description:
+      "Design an operating environment around how your business actually works instead of forcing every process into a generic tool.",
+  },
+];
+
+const problems = [
+  "Client information scattered across spreadsheets, inboxes and messaging apps.",
+  "Managers repeatedly chasing staff for updates and task completion.",
+  "Client onboarding that depends on memory, manual follow-ups and individual employees.",
+  "Important decisions and instructions disappearing inside conversations.",
+  "No clear picture of where work stands, who owns it or what needs attention.",
+];
+
+export default function HomePage() {
+  return (
+    <main className="overflow-hidden">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+        <nav className="container-main flex h-[76px] items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
+              <Command size={22} strokeWidth={2.5} />
+            </span>
+            <span className="text-[23px] font-black tracking-[-0.07em] text-slate-950">
+              6ixtem<span className="text-blue-600">.</span>
+            </span>
+          </Link>
+
+          <div className="hidden items-center gap-8 text-sm font-semibold text-slate-600 md:flex">
+            <a href="#approach" className="hover:text-blue-600">Our approach</a>
+            <a href="#capabilities" className="hover:text-blue-600">Capabilities</a>
+            <a href="#fit" className="hover:text-blue-600">Who we serve</a>
+          </div>
+
+          <Link href="/6ixtem" className="button-primary">
+            Explore 6ixtem <ArrowRight size={16} />
+          </Link>
+        </nav>
+      </header>
+
+      <section className="blue-glow relative border-b border-slate-200 bg-white">
+        <div className="container-main grid items-center gap-14 py-20 md:grid-cols-[1.08fr_.92fr] md:py-28">
+          <div>
+            <div className="eyebrow">Business systems, intelligently designed</div>
+
+            <h1 className="mt-7 max-w-3xl text-[clamp(43px,6vw,76px)] font-black leading-[1.02] tracking-[-0.065em] text-slate-950">
+              Your business has grown.
+              <span className="block text-blue-600">
+                Have your systems kept up?
+              </span>
+            </h1>
+
+            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">
+              Growth creates complexity. 6ixtem helps growing service
+              businesses bring their people, client information, communication
+              and workflows into a more connected operating environment.
+            </p>
+
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href="/6ixtem" className="button-primary">
+                Discover the system <ArrowRight size={17} />
+              </Link>
+              <a href="#approach" className="button-secondary">
+                See how we work <ArrowDownRight size={17} />
+              </a>
+            </div>
+
+            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-slate-500">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-blue-600" />
+                Built around your operations
+              </span>
+              <span className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-blue-600" />
+                Practical automation
+              </span>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute -inset-6 rounded-[36px] bg-blue-100/60 blur-3xl" />
+            <div className="surface-card relative overflow-hidden p-5 sm:p-7">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">
+                    Operating overview
+                  </p>
+                  <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-900">
+                    Your business, connected.
+                  </h2>
+                </div>
+                <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
+                  System view
+                </span>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <Database className="text-blue-600" size={21} />
+                  <p className="mt-4 text-sm font-bold text-slate-800">Client records</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Information in context
+                  </p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <Workflow className="text-blue-600" size={21} />
+                  <p className="mt-4 text-sm font-bold text-slate-800">Workflows</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Clear process ownership
+                  </p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <MessagesSquare className="text-blue-600" size={21} />
+                  <p className="mt-4 text-sm font-bold text-slate-800">Communication</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Less information friction
+                  </p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <BarChart3 className="text-blue-600" size={21} />
+                  <p className="mt-4 text-sm font-bold text-slate-800">Visibility</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Better operational insight
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl bg-[#102d62] p-5 text-white">
+                <div className="flex items-center gap-2 text-sm font-semibold text-blue-100">
+                  <CircleDot size={16} />
+                  The operating principle
+                </div>
+                <p className="mt-2 text-lg font-bold leading-7">
+                  Make the business less dependent on memory and disconnected tools.
+                </p>
+                <div className="mt-4 flex items-center gap-2 text-sm text-blue-200">
+                  <ShieldCheck size={16} />
+                  Structured around your business
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="approach" className="container-main py-24">
+        <div className="eyebrow">The operational problem</div>
+        <div className="mt-4 grid gap-8 md:grid-cols-2 md:gap-16">
+          <h2 className="section-heading mt-0">
+            Growth should create capacity. Not operational chaos.
+          </h2>
+          <div>
+            <p className="section-copy mt-0">
+              As a business grows, the informal systems that once worked begin
+              to break down. More clients mean more information. More staff mean
+              more coordination. More services mean more handovers, dependencies
+              and opportunities for things to be missed.
+            </p>
+            <p className="mt-4 leading-7 text-slate-600">
+              The answer is not always another disconnected application. It is
+              a more coherent way for the business to operate.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-12 grid gap-3 md:grid-cols-2">
+          {problems.map((problem) => (
+            <div key={problem} className="surface-card flex gap-3 p-5">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <ArrowUpRight size={16} />
+              </span>
+              <p className="text-sm leading-6 text-slate-700">{problem}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="capabilities" className="border-y border-slate-200 bg-white py-24">
+        <div className="container-main">
+          <div className="eyebrow">A connected operating environment</div>
+          <h2 className="section-heading">
+            One operating vision. Multiple connected capabilities.
+          </h2>
+          <p className="section-copy">
+            We identify the operational friction affecting your business and
+            design a practical system around the processes that matter.
+          </p>
+
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {capabilities.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <article key={item.number} className="surface-card group p-6 transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5">
+                  <div className="flex items-center justify-between">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
+                      <Icon size={23} />
+                    </span>
+                    <span className="text-xs font-bold tracking-widest text-slate-300">
+                      {item.number}
+                    </span>
+                  </div>
+                  <h3 className="mt-6 text-lg font-bold text-slate-900">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    {item.description}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section id="fit" className="container-main py-24">
+        <div className="grid gap-12 md:grid-cols-2 md:items-center">
+          <div>
+            <div className="eyebrow">Who we work with</div>
+            <h2 className="section-heading">
+              For businesses that have outgrown informal operations.
+            </h2>
+            <p className="section-copy">
+              6ixtem is designed for growing service businesses managing
+              recurring clients, multiple responsibilities and increasingly
+              complex workflows.
+            </p>
+            <Link href="/6ixtem" className="button-primary mt-7">
+              See if 6ixtem fits your business <ArrowRight size={17} />
+            </Link>
+          </div>
+
+          <div className="surface-card p-7 sm:p-9">
+            {[
+              "Your team relies on several disconnected tools.",
+              "Client onboarding and service delivery need structure.",
+              "Managers spend too much time chasing updates.",
+              "You need better visibility into operational activity.",
+              "You are ready to invest in improving how the business runs.",
+            ].map((item) => (
+              <div key={item} className="flex gap-3 border-b border-slate-100 py-4 last:border-0">
+                <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-blue-600" />
+                <p className="text-sm leading-6 text-slate-700">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="container-main pb-20">
+        <div className="relative overflow-hidden rounded-3xl bg-[#102d62] px-7 py-14 text-white sm:px-12 md:py-16">
+          <div className="absolute -right-20 -top-28 h-80 w-80 rounded-full bg-blue-500/30 blur-3xl" />
+          <div className="relative max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-200">
+              Start with the business, not the software
+            </p>
+            <h2 className="mt-5 text-3xl font-black leading-tight tracking-tight sm:text-5xl">
+              Before choosing tools, understand what your business actually needs.
+            </h2>
+            <p className="mt-5 max-w-2xl leading-7 text-blue-100">
+              Start with a structured assessment of your operations, challenges,
+              team and requirements. We will use that information to determine
+              whether 6ixtem is an appropriate fit.
+            </p>
+            <Link href="/6ixtem" className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 font-bold text-blue-900 transition hover:bg-blue-50">
+              Explore the 6ixtem system <ChevronRight size={18} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="container-main flex flex-col gap-4 py-7 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 6ixtem. Business systems, thoughtfully designed.</p>
+          <p>Built around the way your business works.</p>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+
+
+========== src/app/layout.tsx ==========
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: {
+    default: "6ixtem | Business Operating Systems",
+    template: "%s | 6ixtem",
+  },
+  description:
+    "6ixtem designs business operating systems that bring client management, staff operations, communication and workflows into one coordinated environment.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+
+
+========== src/app/api/6ixtem/assessment/route.ts ==========
+
+import OpenAI from "openai";
+import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { qualifyAssessment } from "@/lib/6ixtem-qualification";
+import {
+  send6ixtemEmail,
+  getAdminNotificationEmail,
+  emailLayout,
+  escapeHtml,
+  emailText,
+} from "@/lib/6ixtem-email";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const systemPrompt = `
+You are the 6ixtem Business Assessment Consultant.
+
+YOUR PURPOSE
+Assess whether a growing service business is suitable for a custom
+business operating system built by 6ixtem.
+
+DISCOVERY
+Be conversational, professional, concise, and consultative.
+Ask ONE focused question at a time.
+Do not repeat questions already answered.
+Do not overwhelm the prospect with long lists of questions.
+
+Gather enough information about:
+- Business identity, industry, services and business model.
+- Team size, responsibilities and decision-making authority.
+- Client onboarding and client record management.
+- Staff coordination, communication, handovers and accountability.
+- Existing software, spreadsheets and manual processes.
+- Operational bottlenecks and their impact.
+- Desired improvements, requirements, integrations and timeline.
+
+INVESTMENT READINESS
+The investment-readiness checkpoint supplied by the application is
+authoritative. Do not change it.
+
+6ixtem offers start from $2,000. This is a qualification reference,
+not a mandatory upfront payment or a promise of final project pricing.
+Final scope and pricing depend on requirements.
+
+COMPLETION
+Set assessmentComplete to true when enough reliable information has
+been gathered to produce a useful initial assessment and determine
+suitability for a consultation.
+
+Do not continue discovery indefinitely. If important information is
+still missing, ask the single most useful next question.
+
+When complete, summarize the business situation and the main
+operational needs identified. State that the assessment is complete.
+Do not invent facts, guarantee outcomes, claim unsupported
+certifications, or quote a final implementation price.
+
+If the business appears suitable, say that a consultation may be the
+next step. Do not claim a consultation has been booked.
+The application—not you—determines qualification and controls the
+booking-consent process.
+
+If the business is not suitable, close politely without pressure.
+
+Return ONLY valid JSON with this structure:
+{
+  "message": "Your message to the prospect",
+  "assessment": {
+    "assessmentComplete": false,
+    "businessName": null,
+    "industry": null,
+    "businessModel": null,
+    "teamSize": null,
+    "decisionMaker": null,
+    "businessProfile": {},
+    "operationalChallenges": [],
+    "currentTools": [],
+    "requirements": [],
+    "assessmentSummary": ""
+  }
+}
+
+Use null for unknown scalar values, empty arrays for unknown lists,
+and an empty object for unknown object fields.
+assessmentComplete must be a JSON boolean.
+`;
+
+type IncomingMessage = {
+  role: "assistant" | "user";
+  content: string;
+};
+
+type AssessmentOutput = {
+  message: string;
+  assessment: {
+    assessmentComplete?: boolean;
+    businessName?: string | null;
+    industry?: string | null;
+    businessModel?: string | null;
+    teamSize?: string | null;
+    decisionMaker?: string | null;
+    businessProfile?: Record<string, unknown>;
+    operationalChallenges?: unknown[];
+    currentTools?: unknown[];
+    requirements?: unknown[];
+    assessmentSummary?: string;
+  };
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function cleanString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const result = value.trim();
+  return result.length ? result.slice(0, 2000) : null;
+}
+
+function cleanArray(value: unknown): Prisma.InputJsonArray {
+  if (!Array.isArray(value)) return [];
+  const parsed: unknown = JSON.parse(JSON.stringify(value.slice(0, 100)));
+  return Array.isArray(parsed) ? (parsed as Prisma.InputJsonArray) : [];
+}
+
+function cleanObject(value: unknown): Prisma.InputJsonObject {
+  if (!isRecord(value)) return {};
+  const parsed: unknown = JSON.parse(JSON.stringify(value));
+  return isRecord(parsed) ? (parsed as Prisma.InputJsonObject) : {};
+}
+
+function validEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
+}
+
+function getLatestUserMessage(messages: IncomingMessage[]): string {
+  return messages[messages.length - 1].content.trim();
+}
+
+function isPositiveConsent(message: string): boolean {
+  const value = message.toLowerCase().trim();
+
+  return /^(yes|yes please|yeah|yep|sure|okay|ok|i agree|i would|i'd like to|let's book|lets book|book a consultation|i want to book|i'm interested|im interested|proceed|continue)$/i.test(
+    value
+  );
+}
+
+function isNegativeConsent(message: string): boolean {
+  const value = message.toLowerCase().trim();
+
+  return /^(no|no thanks|not now|not yet|maybe later|i decline|don't book|do not book|not interested|stop|cancel)$/i.test(
+    value
+  );
+}
+
+function htmlParagraphs(value: string): string {
+  return value
+    .split(/\n+/)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("");
+}
+
+async function notifyAdmin(
+  subject: string,
+  text: string,
+  html: string
+): Promise<void> {
+  const to = getAdminNotificationEmail();
+
+  if (!to) {
+    console.warn("6ixtem admin notification skipped: no notification email configured.");
+    return;
+  }
+
+  try {
+    await send6ixtemEmail({ to, subject, text, html });
+  } catch (error) {
+    // Notification failure must not undo a saved assessment or lead.
+    console.error("6ixtem admin notification failed:", error);
+  }
+}
+
+async function sendLeadEmails(input: {
+  name: string;
+  email: string;
+  businessName: string | null;
+  assessmentSummary: string | null;
+  bookingUrl: string;
+}): Promise<boolean> {
+  const name = escapeHtml(input.name);
+  const businessName = escapeHtml(input.businessName || "Your business");
+  const summary = input.assessmentSummary
+    ? htmlParagraphs(input.assessmentSummary)
+    : "<p>Your assessment has been completed. You can use the link below to choose a consultation time.</p>";
+
+  const bookingLink = `${process.env.NEXT_PUBLIC_SITE_URL || "https://6ixtem.com"}${input.bookingUrl}`;
+
+  try {
+    await send6ixtemEmail({
+      to: input.email,
+      subject: "Your 6ixtem business assessment",
+      text: emailText(
+        `Hi ${input.name},\n\nYour 6ixtem business assessment is complete for ${input.businessName || "your business"}.\n\n${input.assessmentSummary || "You can now choose a consultation time if you would like to discuss your requirements."}\n\nBook a consultation: ${bookingLink}\n\nThe 6ixtem Team`
+      ),
+    html: emailLayout(
+  "Your assessment is complete",
+  `
+    <h1>Your assessment is complete</h1>
+    <p>Hi ${name},</p>
+    <p>Thank you for completing your 6ixtem business assessment for <strong>${businessName}</strong>.</p>
+    ${summary}
+    <p>If you would like to discuss your business requirements with our team, you can choose a suitable consultation time below.</p>
+    <p><a href="${escapeHtml(bookingLink)}">Choose a consultation time</a></p>
+    <p>There is no obligation to book.</p>
+    <p>The 6ixtem Team</p>
+  `
+),
+    });
+
+    return true;
+  } catch (error) {
+    console.error("6ixtem lead email failed:", error);
+    return false;
+  }
+}
+
+export async function POST(request: Request) {
+  let stage = "request validation";
+
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "The AI assessment service is not configured." },
+        { status: 503 }
+      );
+    }
+
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "The assessment database is not configured." },
+        { status: 503 }
+      );
+    }
+
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "The request body must contain valid JSON." },
+        { status: 400 }
+      );
+    }
+
+    if (!isRecord(body)) {
+      return NextResponse.json(
+        { error: "Invalid request body." },
+        { status: 400 }
+      );
+    }
+
+    const sessionId =
+      typeof body.sessionId === "string" ? body.sessionId : "";
+
+    const investmentReadiness =
+      typeof body.investmentReadiness === "string"
+        ? body.investmentReadiness
+        : "maybe";
+
+    const incomingMessages = body.messages;
+
+    if (!/^[a-zA-Z0-9_-]{10,100}$/.test(sessionId)) {
+      return NextResponse.json(
+        { error: "Invalid assessment session." },
+        { status: 400 }
+      );
+    }
+
+    if (!["yes", "maybe", "no"].includes(investmentReadiness)) {
+      return NextResponse.json(
+        { error: "Invalid investment readiness value." },
+        { status: 400 }
+      );
+    }
+
+    if (!Array.isArray(incomingMessages) || incomingMessages.length === 0) {
+      return NextResponse.json(
+        { error: "A conversation message is required." },
+        { status: 400 }
+      );
+    }
+
+    if (incomingMessages.length > 80) {
+      return NextResponse.json(
+        { error: "The assessment has reached its message limit." },
+        { status: 400 }
+      );
+    }
+
+    const messages: IncomingMessage[] = [];
+
+    for (const item of incomingMessages) {
+      if (
+        !isRecord(item) ||
+        !["assistant", "user"].includes(String(item.role)) ||
+        typeof item.content !== "string" ||
+        !item.content.trim() ||
+        item.content.length > 5000
+      ) {
+        return NextResponse.json(
+          { error: "One or more messages are invalid." },
+          { status: 400 }
+        );
+      }
+
+      messages.push({
+        role: item.role as IncomingMessage["role"],
+        content: item.content.trim(),
+      });
+    }
+
+    if (messages[messages.length - 1].role !== "user") {
+      return NextResponse.json(
+        { error: "The latest message must come from the prospect." },
+        { status: 400 }
+      );
+    }
+
+    const latestMessage = getLatestUserMessage(messages);
+
+    stage = "database lookup";
+
+    const existing = await prisma.assessment.findUnique({
+      where: { sessionId },
+      select: {
+        id: true,
+        status: true,
+        qualificationStatus: true,
+        qualificationScore: true,
+        completedAt: true,
+        assessmentSummary: true,
+        businessName: true,
+        industry: true,
+        businessModel: true,
+        teamSize: true,
+        decisionMaker: true,
+        investmentReadiness: true,
+        businessProfile: true,
+        operationalChallenges: true,
+        currentTools: true,
+        requirements: true,
+        contactName: true,
+        contactEmail: true,
+        funnelState: true,
+        assessmentEmailSentAt: true,
+        bookingLinkSentAt: true,
+      },
+    });
+
+    /*
+     * Post-assessment funnel:
+     * qualification and state are read from the database, never trusted
+     * from browser-supplied fields.
+     */
+    if (existing?.status === "COMPLETED") {
+      const canBook = existing.qualificationStatus === "QUALIFIED";
+
+      if (!canBook) {
+        return NextResponse.json({
+          message:
+            "Your assessment is complete. Thank you for sharing information about your business. Based on the information provided, a consultation is not the recommended next step at this time.",
+          qualification: {
+            status: existing.qualificationStatus,
+            score: existing.qualificationScore,
+            reasons: [],
+          },
+          assessment: {
+            id: existing.id,
+            status: existing.status,
+            completed: true,
+          },
+          nextStep: "ASSESSMENT_CLOSED",
+          bookingUrl: null,
+          persisted: true,
+        });
+      }
+
+      if (existing.funnelState === "DECLINED" ||
+          existing.funnelState === "CLOSED") {
+        return NextResponse.json({
+          message: "Thank you for your time. You can return whenever you are ready to explore your business requirements further.",
+          qualification: {
+            status: existing.qualificationStatus,
+            score: existing.qualificationScore,
+            reasons: [],
+          },
+          assessment: {
+            id: existing.id,
+            status: existing.status,
+            completed: true,
+          },
+          nextStep: "ASSESSMENT_CLOSED",
+          bookingUrl: null,
+          persisted: true,
+        });
+      }
+
+      if (existing.funnelState === "BOOKING_LINK_SENT") {
+        const bookingUrl =
+          `/6ixtem/assessment/booking?assessmentId=${encodeURIComponent(existing.id)}`;
+
+        return NextResponse.json({
+          message:
+            "Your assessment is complete, and the consultation link has been sent to your email. Please check your inbox, including your spam or junk folder.",
+          qualification: {
+            status: existing.qualificationStatus,
+            score: existing.qualificationScore,
+            reasons: [],
+          },
+          assessment: {
+            id: existing.id,
+            status: existing.status,
+            completed: true,
+          },
+          nextStep: "BOOKING_LINK_SENT",
+          bookingUrl,
+          persisted: true,
+        });
+      }
+
+      if (existing.funnelState === "COLLECTING_NAME") {
+        const name = latestMessage.trim().slice(0, 150);
+
+        if (
+          name.length < 2 ||
+          name.length > 150 ||
+          /@|https?:\/\/|\d{6,}/i.test(name)
+        ) {
+          return NextResponse.json({
+            message: "Please enter your name so I can prepare the consultation details.",
+            qualification: {
+              status: existing.qualificationStatus,
+              score: existing.qualificationScore,
+              reasons: [],
+            },
+            assessment: { id: existing.id, status: existing.status, completed: true },
+            nextStep: "COLLECTING_NAME",
+            bookingUrl: null,
+            persisted: true,
+          });
+        }
+
+        await prisma.assessment.update({
+          where: { id: existing.id },
+          data: {
+            contactName: name,
+            funnelState: "COLLECTING_EMAIL",
+          },
+        });
+
+        return NextResponse.json({
+          message: `Thank you, ${name}. What email address should we send your assessment summary and consultation booking link to?`,
+          qualification: {
+            status: existing.qualificationStatus,
+            score: existing.qualificationScore,
+            reasons: [],
+          },
+          assessment: { id: existing.id, status: existing.status, completed: true },
+          nextStep: "COLLECTING_EMAIL",
+          bookingUrl: null,
+          persisted: true,
+        });
+      }
+
+      if (existing.funnelState === "COLLECTING_EMAIL") {
+        const email = latestMessage.trim().toLowerCase();
+
+        if (!validEmail(email)) {
+          return NextResponse.json({
+            message: "That doesn't look like a valid email address. Please check it and enter the email address where you'd like to receive your assessment and booking link.",
+            qualification: {
+              status: existing.qualificationStatus,
+              score: existing.qualificationScore,
+              reasons: [],
+            },
+            assessment: { id: existing.id, status: existing.status, completed: true },
+            nextStep: "COLLECTING_EMAIL",
+            bookingUrl: null,
+            persisted: true,
+          });
+        }
+
+        if (!existing.contactName) {
+          await prisma.assessment.update({
+            where: { id: existing.id },
+            data: { funnelState: "COLLECTING_NAME" },
+          });
+
+          return NextResponse.json({
+            message: "Before I send that, could you tell me your name?",
+            qualification: {
+              status: existing.qualificationStatus,
+              score: existing.qualificationScore,
+              reasons: [],
+            },
+            assessment: { id: existing.id, status: existing.status, completed: true },
+            nextStep: "COLLECTING_NAME",
+            bookingUrl: null,
+            persisted: true,
+          });
+        }
+
+        stage = "saving prospect contact";
+
+        await prisma.assessment.update({
+          where: { id: existing.id },
+          data: {
+            contactEmail: email,
+            funnelState: "COLLECTING_EMAIL",
+          },
+        });
+
+        const bookingUrl =
+          `/6ixtem/assessment/booking?assessmentId=${encodeURIComponent(existing.id)}`;
+
+        const emailSent = await sendLeadEmails({
+          name: existing.contactName,
+          email,
+          businessName: existing.businessName,
+          assessmentSummary: existing.assessmentSummary,
+          bookingUrl,
+        });
+
+        if (!emailSent) {
+          // Keep the email and name saved so a retry can resend.
+          return NextResponse.json({
+            message:
+              "Your details have been saved, but we couldn't send the email just yet. Please try sending your email address again in a moment.",
+            qualification: {
+              status: existing.qualificationStatus,
+              score: existing.qualificationScore,
+              reasons: [],
+            },
+            assessment: { id: existing.id, status: existing.status, completed: true },
+            nextStep: "COLLECTING_EMAIL",
+            bookingUrl: null,
+            persisted: true,
+          });
+        }
+
+        await prisma.assessment.update({
+          where: { id: existing.id },
+          data: {
+            funnelState: "BOOKING_LINK_SENT",
+            bookingLinkSentAt: new Date(),
+          },
+        });
+
+        await notifyAdmin(
+          "New qualified 6ixtem lead",
+          [
+            "A qualified prospect has completed the 6ixtem assessment and requested a consultation.",
+            `Name: ${existing.contactName}`,
+            `Email: ${email}`,
+            `Business: ${existing.businessName || "Not provided"}`,
+            `Industry: ${existing.industry || "Not provided"}`,
+            `Qualification score: ${existing.qualificationScore}`,
+            `Assessment ID: ${existing.id}`,
+            `Summary: ${existing.assessmentSummary || "Not provided"}`,
+          ].join("\n"),
+        emailLayout(
+  "New qualified 6ixtem lead",
+  `
+    <h1>New qualified 6ixtem lead</h1>
+    <p>A qualified prospect has completed the assessment and requested a consultation.</p>
+    <p><strong>Name:</strong> ${escapeHtml(existing.contactName)}</p>
+    <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+    <p><strong>Business:</strong> ${escapeHtml(existing.businessName || "Not provided")}</p>
+    <p><strong>Industry:</strong> ${escapeHtml(existing.industry || "Not provided")}</p>
+    <p><strong>Qualification score:</strong> ${existing.qualificationScore}</p>
+    <p><strong>Assessment ID:</strong> ${escapeHtml(existing.id)}</p>
+    <h2>Assessment summary</h2>
+    ${htmlParagraphs(existing.assessmentSummary || "Not provided")}
+  `
+)
+);
+
+        return NextResponse.json({
+          message:
+            "Your assessment confirmation and consultation booking link have been sent to your email. You can use the link in that email to choose a suitable time.",
+          qualification: {
+            status: existing.qualificationStatus,
+            score: existing.qualificationScore,
+            reasons: [],
+          },
+          assessment: { id: existing.id, status: existing.status, completed: true },
+          nextStep: "BOOKING_LINK_SENT",
+          bookingUrl,
+          persisted: true,
+        });
+      }
+
+      // First post-assessment turn: ask for explicit consent.
+      if (
+        existing.funnelState === "QUALIFIED" ||
+        existing.funnelState === "AWAITING_CONSENT" ||
+        existing.funnelState === "DISCOVERY"
+      ) {
+        if (isNegativeConsent(latestMessage)) {
+          await prisma.assessment.update({
+            where: { id: existing.id },
+            data: { funnelState: "DECLINED" },
+          });
+
+          return NextResponse.json({
+            message:
+              "No problem. Thank you for completing the 6ixtem business assessment. You're welcome to return whenever you are ready to explore your operational requirements further.",
+            qualification: {
+              status: existing.qualificationStatus,
+              score: existing.qualificationScore,
+              reasons: [],
+            },
+            assessment: { id: existing.id, status: existing.status, completed: true },
+            nextStep: "ASSESSMENT_CLOSED",
+            bookingUrl: null,
+            persisted: true,
+          });
+        }
+
+        if (isPositiveConsent(latestMessage)) {
+          await prisma.assessment.update({
+            where: { id: existing.id },
+            data: { funnelState: "COLLECTING_NAME" },
+          });
+
+          return NextResponse.json({
+            message:
+              "Great. What is your name? I'll use it to prepare your assessment and consultation details.",
+            qualification: {
+              status: existing.qualificationStatus,
+              score: existing.qualificationScore,
+              reasons: [],
+            },
+            assessment: { id: existing.id, status: existing.status, completed: true },
+            nextStep: "COLLECTING_NAME",
+            bookingUrl: null,
+            persisted: true,
+          });
+        }
+
+        await prisma.assessment.update({
+          where: { id: existing.id },
+          data: { funnelState: "AWAITING_CONSENT" },
+        });
+
+        return NextResponse.json({
+          message:
+            "Your assessment is complete, and your business appears suitable for a consultation with 6ixtem. Would you like to continue and receive an assessment confirmation and a link to book a consultation? You can say yes or no.",
+          qualification: {
+            status: existing.qualificationStatus,
+            score: existing.qualificationScore,
+            reasons: [],
+          },
+          assessment: { id: existing.id, status: existing.status, completed: true },
+          nextStep: "AWAITING_CONSENT",
+          bookingUrl: null,
+          persisted: true,
+        });
+      }
+
+      return NextResponse.json({
+        message:
+          "Your assessment is complete. Would you like to receive the assessment confirmation and consultation booking link by email?",
+        qualification: {
+          status: existing.qualificationStatus,
+          score: existing.qualificationScore,
+          reasons: [],
+        },
+        assessment: { id: existing.id, status: existing.status, completed: true },
+        nextStep: "AWAITING_CONSENT",
+        bookingUrl: null,
+        persisted: true,
+      });
+    }
+
+    /*
+     * Discovery phase.
+     */
+    stage = "OpenAI request";
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "system",
+          content: `Investment readiness checkpoint: ${investmentReadiness}`,
+        },
+        ...messages,
+      ],
+    });
+
+    const raw = response.choices[0]?.message?.content;
+
+    if (!raw) throw new Error("The AI returned an empty response.");
+
+    let output: AssessmentOutput;
+
+    try {
+      output = JSON.parse(raw) as AssessmentOutput;
+    } catch {
+      throw new Error("The AI returned invalid structured data.");
+    }
+
+    if (
+      !isRecord(output) ||
+      typeof output.message !== "string" ||
+      !output.message.trim() ||
+      !isRecord(output.assessment)
+    ) {
+      throw new Error("The AI response did not match the expected format.");
+    }
+
+    const assessment = output.assessment;
+
+    const normalized = {
+      businessName: cleanString(assessment.businessName),
+      industry: cleanString(assessment.industry),
+      businessModel: cleanString(assessment.businessModel),
+      teamSize: cleanString(assessment.teamSize),
+      decisionMaker: cleanString(assessment.decisionMaker),
+      investmentReadiness,
+      businessProfile: cleanObject(assessment.businessProfile),
+      operationalChallenges: cleanArray(assessment.operationalChallenges),
+      currentTools: cleanArray(assessment.currentTools),
+      requirements: cleanArray(assessment.requirements),
+      assessmentSummary: cleanString(assessment.assessmentSummary),
+    };
+
+    const qualification = qualifyAssessment({
+      ...normalized,
+      assessmentComplete: assessment.assessmentComplete === true,
+    });
+
+    const completed =
+      assessment.assessmentComplete === true &&
+      qualification.status !== "NEEDS_DISCOVERY";
+
+    const conversation = [
+      ...messages,
+      { role: "assistant" as const, content: output.message.trim() },
+    ];
+
+    stage = "saving assessment";
+
+    const saved = await prisma.assessment.upsert({
+      where: { sessionId },
+      create: {
+        sessionId,
+        status: completed ? "COMPLETED" : "IN_PROGRESS",
+        qualificationStatus: qualification.status,
+        qualificationScore: qualification.score,
+        businessName: normalized.businessName,
+        industry: normalized.industry,
+        businessModel: normalized.businessModel,
+        teamSize: normalized.teamSize,
+        decisionMaker: normalized.decisionMaker,
+        investmentReadiness: normalized.investmentReadiness,
+        businessProfile: normalized.businessProfile,
+        operationalChallenges: normalized.operationalChallenges,
+        currentTools: normalized.currentTools,
+        requirements: normalized.requirements,
+        conversation,
+        assessmentSummary: normalized.assessmentSummary,
+        completedAt: completed ? new Date() : null,
+        funnelState: completed
+          ? qualification.status === "QUALIFIED"
+            ? "AWAITING_CONSENT"
+            : "CLOSED"
+          : "DISCOVERY",
+      },
+      update: {
+        status: completed ? "COMPLETED" : "IN_PROGRESS",
+        qualificationStatus: qualification.status,
+        qualificationScore: qualification.score,
+        businessName: normalized.businessName,
+        industry: normalized.industry,
+        businessModel: normalized.businessModel,
+        teamSize: normalized.teamSize,
+        decisionMaker: normalized.decisionMaker,
+        investmentReadiness: normalized.investmentReadiness,
+        businessProfile: normalized.businessProfile,
+        operationalChallenges: normalized.operationalChallenges,
+        currentTools: normalized.currentTools,
+        requirements: normalized.requirements,
+        conversation,
+        assessmentSummary: normalized.assessmentSummary,
+        ...(completed
+          ? {
+              completedAt: new Date(),
+              funnelState:
+                qualification.status === "QUALIFIED"
+                  ? "AWAITING_CONSENT"
+                  : "CLOSED",
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        status: true,
+        qualificationStatus: true,
+        qualificationScore: true,
+        funnelState: true,
+      },
+    });
+
+    const canBook =
+      saved.status === "COMPLETED" &&
+      saved.qualificationStatus === "QUALIFIED";
+
+    /*
+     * Notify the admin when an assessment first completes.
+     * Use the persisted timestamp to avoid routine duplicate notifications.
+     */
+    if (completed && !existing?.completedAt) {
+      const admin = getAdminNotificationEmail();
+
+      if (admin) {
+        const sentAt = new Date();
+
+        await notifyAdmin(
+          `6ixtem assessment completed: ${normalized.businessName || "New prospect"}`,
+          [
+            "A 6ixtem business assessment has been completed.",
+            `Business: ${normalized.businessName || "Not provided"}`,
+            `Industry: ${normalized.industry || "Not provided"}`,
+            `Qualification: ${saved.qualificationStatus}`,
+            `Score: ${saved.qualificationScore}`,
+            `Assessment ID: ${saved.id}`,
+            `Summary: ${normalized.assessmentSummary || "Not provided"}`,
+          ].join("\n"),
+          emailLayout(`
+            <h1>Assessment completed</h1>
+            <p><strong>Business:</strong> ${escapeHtml(normalized.businessName || "Not provided")}</p>
+            <p><strong>Industry:</strong> ${escapeHtml(normalized.industry || "Not provided")}</p>
+            <p><strong>Qualification:</strong> ${escapeHtml(saved.qualificationStatus)}</p>
+            <p><strong>Score:</strong> ${saved.qualificationScore}</p>
+            <p><strong>Assessment ID:</strong> ${escapeHtml(saved.id)}</p>
+            <h2>Summary</h2>
+            ${htmlParagraphs(normalized.assessmentSummary || "Not provided")}
+          `)
+        );
+
+        // This field records that the completion notification attempt occurred.
+        // A failed email is logged; it does not invalidate the saved assessment.
+        await prisma.assessment.update({
+          where: { id: saved.id },
+          data: { assessmentEmailSentAt: sentAt },
+        });
+      }
+    }
+
+    const nextStep = !completed
+      ? "CONTINUE_ASSESSMENT"
+      : canBook
+        ? "AWAITING_CONSENT"
+        : "ASSESSMENT_CLOSED";
+
+    return NextResponse.json({
+      message: output.message.trim(),
+      qualification: {
+        status: saved.qualificationStatus,
+        score: saved.qualificationScore,
+        reasons: qualification.reasons,
+      },
+      assessment: {
+        id: saved.id,
+        status: saved.status,
+        completed: saved.status === "COMPLETED",
+      },
+      nextStep,
+      bookingUrl: null,
+      persisted: true,
+    });
+  } catch (error) {
+    console.error("6ixtem assessment failure:", {
+      stage,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    });
+
+    return NextResponse.json(
+      { error: "We could not process that response. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+
+
+
+========== src/app/api/6ixtem/calendar/book/route.ts ==========
+
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+
+import {
+  CONSULTATION_MINUTES,
+  CONSULTATION_TIME_ZONE,
+  getBusyIntervals,
+  getCalendarClient,
+  isValidConsultationSlot,
+} from "@/lib/6ixtem-google-calendar";
+
+import {
+  send6ixtemEmail,
+  getAdminNotificationEmail,
+  emailLayout,
+  escapeHtml,
+  emailText,
+} from "@/lib/6ixtem-email";
+
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+function isValidEmail(value: string): boolean {
+  return (
+    value.length <= 254 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  );
+}
+
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("en-IE", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: CONSULTATION_TIME_ZONE,
+  }).format(date);
+}
+
+function getSiteUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+    "https://6ixtem.com"
+  );
+}
+
+async function sendBookingEmails(input: {
+  bookingId: string;
+  assessmentId: string;
+  attendeeName: string;
+  attendeeEmail: string;
+  businessName: string | null;
+  startAt: Date;
+  endAt: Date;
+  meetUrl: string | null;
+}): Promise<{
+  attendeeEmailSent: boolean;
+  adminEmailSent: boolean;
+}> {
+  const {
+    bookingId,
+    assessmentId,
+    attendeeName,
+    attendeeEmail,
+    businessName,
+    startAt,
+    endAt,
+    meetUrl,
+  } = input;
+
+  const dateTime = formatDateTime(startAt);
+  const endDateTime = formatDateTime(endAt);
+
+  const safeName = escapeHtml(attendeeName);
+  const safeBusiness = escapeHtml(
+    businessName || "Your business",
+  );
+  const safeDateTime = escapeHtml(dateTime);
+  const safeEndDateTime = escapeHtml(endDateTime);
+
+  const meetingSection = meetUrl
+    ? `<p><strong>Google Meet:</strong> <a href="${escapeHtml(meetUrl)}">${escapeHtml(meetUrl)}</a></p>`
+    : "<p>Your calendar invitation contains the meeting details. If the Google Meet link is not yet available, it may appear after Google finishes preparing the event.</p>";
+
+  const siteUrl = getSiteUrl();
+
+  let attendeeEmailSent = false;
+  let adminEmailSent = false;
+
+  // Send the attendee confirmation independently. A mail failure must
+  // not undo the saved booking or remove the calendar event.
+  try {
+    await send6ixtemEmail({
+      to: attendeeEmail,
+      subject: "Your 6ixtem consultation is confirmed",
+      text: emailText(
+        [
+          `Hi ${attendeeName},`,
+          "",
+          "Your 6ixtem consultation has been booked successfully.",
+          "",
+          `Business: ${businessName || "Your business"}`,
+          `Start: ${dateTime}`,
+          `End: ${endDateTime}`,
+          `Time zone: ${CONSULTATION_TIME_ZONE}`,
+          meetUrl ? `Google Meet: ${meetUrl}` : "",
+          "",
+          "A calendar invitation has also been requested.",
+          `Booking reference: ${bookingId}`,
+          "",
+          `Visit 6ixtem: ${siteUrl}`,
+          "",
+          "The 6ixtem Team",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      ),
+      html: emailLayout(
+  "Your consultation is confirmed",
+  `
+    <h1>Your consultation is confirmed</h1>
+    <p>Hi ${safeName},</p>
+    <p>Your consultation with the 6ixtem team has been booked successfully.</p>
+
+    <div style="padding:16px;border:1px solid #e2e8f0;border-radius:12px;">
+      <p><strong>Business:</strong> ${safeBusiness}</p>
+      <p><strong>Starts:</strong> ${safeDateTime}</p>
+      <p><strong>Ends:</strong> ${safeEndDateTime}</p>
+      <p><strong>Time zone:</strong> ${escapeHtml(CONSULTATION_TIME_ZONE)}</p>
+      ${meetingSection}
+      <p><strong>Booking reference:</strong> ${escapeHtml(bookingId)}</p>
+    </div>
+
+    <p>A calendar invitation has also been requested. Please keep the invitation for your records.</p>
+    <p><a href="${escapeHtml(siteUrl)}">Visit 6ixtem</a></p>
+    <p>The 6ixtem Team</p>
+  `
+),
+    });
+
+    attendeeEmailSent = true;
+  } catch (error) {
+    console.error("6ixtem attendee booking email failed:", {
+      bookingId,
+      message:
+        error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // Admin notification is independent of attendee delivery.
+  const adminEmail = getAdminNotificationEmail();
+
+  if (adminEmail) {
+    try {
+      await send6ixtemEmail({
+        to: adminEmail,
+        subject: `New 6ixtem consultation booking — ${attendeeName}`,
+        text: emailText(
+          [
+            "A new 6ixtem consultation has been booked.",
+            "",
+            `Name: ${attendeeName}`,
+            `Email: ${attendeeEmail}`,
+            `Business: ${businessName || "Not provided"}`,
+            `Start: ${dateTime}`,
+            `End: ${endDateTime}`,
+            `Time zone: ${CONSULTATION_TIME_ZONE}`,
+            meetUrl ? `Google Meet: ${meetUrl}` : "Google Meet: Not available yet",
+            `Booking reference: ${bookingId}`,
+            `Assessment reference: ${assessmentId}`,
+          ].join("\n"),
+        ),
+        html: emailLayout(`
+          <h1>New consultation booking</h1>
+          <p>A prospect has booked a consultation with 6ixtem.</p>
+
+          <p><strong>Name:</strong> ${safeName}</p>
+          <p><strong>Email:</strong> ${escapeHtml(attendeeEmail)}</p>
+          <p><strong>Business:</strong> ${safeBusiness}</p>
+          <p><strong>Starts:</strong> ${safeDateTime}</p>
+          <p><strong>Ends:</strong> ${safeEndDateTime}</p>
+          <p><strong>Time zone:</strong> ${escapeHtml(CONSULTATION_TIME_ZONE)}</p>
+          ${meetingSection}
+          <p><strong>Booking reference:</strong> ${escapeHtml(bookingId)}</p>
+          <p><strong>Assessment reference:</strong> ${escapeHtml(assessmentId)}</p>
+        `),
+      });
+
+      adminEmailSent = true;
+    } catch (error) {
+      console.error("6ixtem admin booking email failed:", {
+        bookingId,
+        message:
+          error instanceof Error ? error.message : String(error),
+      });
+    }
+  } else {
+    console.warn(
+      "6ixtem admin booking email skipped: LEAD_NOTIFICATION_EMAIL is not configured.",
+    );
+  }
+
+  return {
+    attendeeEmailSent,
+    adminEmailSent,
+  };
+}
+
+export async function POST(request: Request) {
+  let createdEventId: string | null = null;
+  let calendarIdForCleanup: string | null = null;
+  let bookingPersisted = false;
+
+  try {
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Request body must be valid JSON." },
+        { status: 400 },
+      );
+    }
+
+    if (!isRecord(body)) {
+      return NextResponse.json(
+        { error: "Invalid request body." },
+        { status: 400 },
+      );
+    }
+
+    const assessmentId =
+      typeof body.assessmentId === "string"
+        ? body.assessmentId.trim()
+        : "";
+
+    const submittedName =
+      typeof body.attendeeName === "string"
+        ? body.attendeeName.trim()
+        : "";
+
+    const submittedEmail =
+      typeof body.attendeeEmail === "string"
+        ? body.attendeeEmail.trim().toLowerCase()
+        : "";
+
+    const startAtRaw =
+      typeof body.startAt === "string"
+        ? body.startAt
+        : "";
+
+    const startAt = new Date(startAtRaw);
+
+    if (
+      !assessmentId ||
+      !Number.isFinite(startAt.getTime()) ||
+      !isValidConsultationSlot(startAt)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Provide a valid assessment and choose a valid future consultation slot.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      (submittedName && (
+        submittedName.length < 2 ||
+        submittedName.length > 120
+      )) ||
+      (submittedEmail && !isValidEmail(submittedEmail))
+    ) {
+      return NextResponse.json(
+        { error: "Please provide a valid name and email address." },
+        { status: 400 },
+      );
+    }
+
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      select: {
+        id: true,
+        status: true,
+        qualificationStatus: true,
+        businessName: true,
+        assessmentSummary: true,
+        contactName: true,
+        contactEmail: true,
+        funnelState: true,
+      },
+    });
+
+    if (
+      !assessment ||
+      assessment.status !== "COMPLETED" ||
+      assessment.qualificationStatus !== "QUALIFIED"
+    ) {
+      return NextResponse.json(
+        { error: "This assessment is not eligible for booking." },
+        { status: 403 },
+      );
+    }
+
+    // Prefer contact details captured during the assessment funnel.
+    // If they exist, do not allow a booking request to substitute a
+    // different identity or email address.
+    const attendeeName =
+      assessment.contactName?.trim() || submittedName;
+
+    const attendeeEmail =
+      assessment.contactEmail?.trim().toLowerCase() ||
+      submittedEmail;
+
+    if (
+      !attendeeName ||
+      attendeeName.length < 2 ||
+      attendeeName.length > 120 ||
+      !attendeeEmail ||
+      !isValidEmail(attendeeEmail)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Please complete the assessment contact details before booking.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      assessment.contactEmail &&
+      submittedEmail &&
+      submittedEmail !== assessment.contactEmail.trim().toLowerCase()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Please book using the email address associated with your assessment.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const endAt = new Date(
+      startAt.getTime() + CONSULTATION_MINUTES * 60_000,
+    );
+
+    // Do not permit a second active booking for the same assessment.
+    const assessmentBooking = await prisma.booking.findFirst({
+      where: {
+        assessmentId,
+        status: "BOOKED",
+      },
+      select: {
+        id: true,
+        startAt: true,
+      },
+    });
+
+    if (assessmentBooking) {
+      return NextResponse.json(
+        {
+          error:
+            "This assessment already has a confirmed booking. Please contact the 6ixtem team if you need to change it.",
+          existingBooking: {
+            id: assessmentBooking.id,
+            startAt: assessmentBooking.startAt,
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    // Check the database for overlapping active bookings.
+    const existing = await prisma.booking.findFirst({
+      where: {
+        status: "BOOKED",
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        {
+          error:
+            "That slot has just been booked. Please choose another time.",
+        },
+        { status: 409 },
+      );
+    }
+
+    // Recheck the connected Google Calendar before creating the event.
+    const busy = await getBusyIntervals(startAt, endAt);
+
+    const overlaps = busy.some(
+      (interval) =>
+        startAt < interval.end && endAt > interval.start,
+    );
+
+    if (overlaps) {
+      return NextResponse.json(
+        {
+          error:
+            "That time is no longer available. Please choose another slot.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const { calendar, calendarId } = await getCalendarClient();
+    calendarIdForCleanup = calendarId;
+
+    const eventResponse = await calendar.events.insert({
+      calendarId,
+      conferenceDataVersion: 1,
+      sendUpdates: "all",
+      requestBody: {
+        summary: `6ixtem Consultation${
+          assessment.businessName
+            ? ` — ${assessment.businessName}`
+            : ""
+        }`,
+        description: [
+          "6ixtem business operations consultation.",
+          `Assessment reference: ${assessment.id}`,
+          assessment.assessmentSummary
+            ? `Assessment summary: ${assessment.assessmentSummary.slice(0, 1500)}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        start: {
+          dateTime: startAt.toISOString(),
+          timeZone: CONSULTATION_TIME_ZONE,
+        },
+        end: {
+          dateTime: endAt.toISOString(),
+          timeZone: CONSULTATION_TIME_ZONE,
+        },
+        attendees: [
+          {
+            email: attendeeEmail,
+            displayName: attendeeName,
+          },
+        ],
+        conferenceData: {
+          createRequest: {
+            requestId: crypto.randomUUID(),
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
+      },
+    });
+
+    createdEventId = eventResponse.data.id ?? null;
+
+    if (!createdEventId) {
+      throw new Error(
+        "Google Calendar did not return an event ID.",
+      );
+    }
+
+    // Conference creation may be asynchronous. Retrieve the event
+    // again to obtain a Meet URL when it is already available.
+    let refreshedEvent = eventResponse.data;
+
+    try {
+      const refreshed = await calendar.events.get({
+        calendarId,
+        eventId: createdEventId,
+      });
+
+      refreshedEvent = refreshed.data;
+    } catch (error) {
+      console.warn(
+        "Could not refresh Google Calendar event details yet:",
+        error,
+      );
+    }
+
+    const meetUrl =
+      refreshedEvent.hangoutLink ??
+      refreshedEvent.conferenceData?.entryPoints?.find(
+        (entry) => entry.entryPointType === "video",
+      )?.uri ??
+      null;
+
+    // Persist the booking before attempting email delivery.
+    const booking = await prisma.booking.create({
+      data: {
+        assessmentId,
+        attendeeName,
+        attendeeEmail,
+        startAt,
+        endAt,
+        timeZone: CONSULTATION_TIME_ZONE,
+        status: "BOOKED",
+        googleEventId: createdEventId,
+        meetUrl,
+      },
+      select: {
+        id: true,
+        assessmentId: true,
+        attendeeName: true,
+        attendeeEmail: true,
+        startAt: true,
+        endAt: true,
+        timeZone: true,
+        status: true,
+        meetUrl: true,
+        googleEventId: true,
+      },
+    });
+
+    bookingPersisted = true;
+
+    // The booking is now committed. Email errors are caught separately
+    // and must never cause deletion of the confirmed calendar event.
+    const emailResults = await sendBookingEmails({
+      bookingId: booking.id,
+      assessmentId,
+      attendeeName,
+      attendeeEmail,
+      businessName: assessment.businessName,
+      startAt,
+      endAt,
+      meetUrl,
+    });
+
+    const message = emailResults.attendeeEmailSent
+      ? meetUrl
+        ? "Your consultation is booked. A confirmation email and calendar invitation have been sent."
+        : "Your consultation is booked and a confirmation email has been sent. Google Meet details may take a short time to become available."
+      : "Your consultation is booked, but we could not send the confirmation email. Your booking remains confirmed; please keep the booking reference and contact the 6ixtem team if needed.";
+
+    return NextResponse.json(
+      {
+        booking,
+        calendarEventId: createdEventId,
+        meetUrl,
+        email: {
+          attendeeSent: emailResults.attendeeEmailSent,
+          adminSent: emailResults.adminEmailSent,
+        },
+        message,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("6ixtem booking error:", error);
+
+    // Only remove the Google event if booking persistence did not
+    // succeed. Email failures happen after persistence and are handled
+    // above, so they do not delete an otherwise valid booking.
+    if (
+      createdEventId &&
+      calendarIdForCleanup &&
+      !bookingPersisted
+    ) {
+      try {
+        const { calendar } = await getCalendarClient();
+
+        await calendar.events.delete({
+          calendarId: calendarIdForCleanup,
+          eventId: createdEventId,
+          sendUpdates: "all",
+        });
+      } catch (cleanupError) {
+        console.error(
+          "Could not clean up the Google Calendar event:",
+          cleanupError,
+        );
+      }
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          "We could not complete the booking. Please refresh availability and try again.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+
+
+========== src/lib/6ixtem-email.ts ==========
+
+import "server-only";
+
+import { Resend } from "resend";
+import { prisma } from "@/lib/prisma";
+import type { EmailDeliveryType } from "@prisma/client";
+
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
+
+const FROM_EMAIL =
+  process.env.EMAIL_FROM || "6ixtem <info@6ixtem.com>";
+
+const ADMIN_EMAIL = process.env.LEAD_NOTIFICATION_EMAIL;
+
+export type EmailResult =
+  | { success: true; id: string | null }
+  | { success: false; error: string };
+
+export type SendEmailInput = {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+};
+
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+
+    return entities[character];
+  });
+}
+
+export function emailLayout(title: string, body: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+</head>
+<body style="margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+  <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+      <div style="padding:24px 30px;background:#0f172a;color:#ffffff;">
+        <div style="font-size:24px;font-weight:800;letter-spacing:-1px;">
+          6ixtem<span style="color:#60a5fa;">.</span>
+        </div>
+        <div style="margin-top:8px;color:#cbd5e1;font-size:12px;">
+          Business systems. Built around your operations.
+        </div>
+      </div>
+      <div style="padding:30px;line-height:1.7;">
+        ${body}
+      </div>
+      <div style="padding:20px 30px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;line-height:1.6;">
+        6ixtem · Custom business operating systems for growing service businesses.
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+export function emailText(value: string): string {
+  return value;
+}
+
+export function getAdminNotificationEmail(): string | null {
+  const email = ADMIN_EMAIL?.trim();
+
+  return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ? email
+    : null;
+}
+
+/**
+ * Store an email before attempting delivery.
+ * The unique key prevents duplicate queue records.
+ */
+export async function queue6ixtemEmail(input: {
+  key: string;
+  type: EmailDeliveryType;
+  bookingId?: string | null;
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  scheduledFor?: Date;
+}) {
+  const to = input.to.trim();
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    throw new Error("A valid recipient email is required.");
+  }
+
+  return prisma.emailDelivery.upsert({
+    where: {
+      key: input.key,
+    },
+    create: {
+      key: input.key,
+      type: input.type,
+      bookingId: input.bookingId ?? null,
+      recipient: to,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+      scheduledFor: input.scheduledFor ?? new Date(),
+      status: "PENDING",
+    },
+    update: {},
+    select: {
+      id: true,
+      key: true,
+      status: true,
+    },
+  });
+}
+
+/**
+ * Send a single email.
+ * Provider errors are returned rather than silently treated as success.
+ */
+export async function send6ixtemEmail(
+  input: SendEmailInput,
+): Promise<EmailResult> {
+  if (!resend) {
+    return {
+      success: false,
+      error: "Email provider is not configured.",
+    };
+  }
+
+  if (
+    !input.to ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.to.trim())
+  ) {
+    return {
+      success: false,
+      error: "A valid recipient email is required.",
+    };
+  }
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: input.to.trim(),
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    });
+
+    if (result.error) {
+      console.error("Resend email error:", result.error);
+
+      return {
+        success: false,
+        error: result.error.message || "Resend rejected the email.",
+      };
+    }
+
+    return {
+      success: true,
+      id: result.data?.id ?? null,
+    };
+  } catch (error) {
+    console.error(
+      "6ixtem email exception:",
+      error instanceof Error ? error.message : String(error),
+    );
+
+    return {
+      success: false,
+      error: "The email could not be sent.",
+    };
+  }
+}
+
+
+
+========== prisma/schema.prisma ==========
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id        Int        @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  status    LeadStatus @default(NEW)
+  budget    String?
+  project   String?
+  timeline  String?
+  notes     String?
+  score     Int        @default(0)
+  source    String?
+  priority  Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  assessment Assessment?
+}
+
+model Assessment {
+  id        String @id @default(cuid())
+  sessionId String @unique
+
+  leadId Int?  @unique
+  lead   Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  status              AssessmentStatus    @default(IN_PROGRESS)
+  qualificationStatus QualificationStatus @default(NEEDS_DISCOVERY)
+  qualificationScore  Int                 @default(0)
+
+  contactName  String?
+  contactEmail String?
+
+  funnelState AssessmentFunnelState @default(DISCOVERY)
+
+  assessmentEmailSentAt DateTime?
+  bookingLinkSentAt     DateTime?
+
+  businessName        String?
+  industry            String?
+  businessModel       String?
+  teamSize            String?
+  decisionMaker       String?
+  investmentReadiness String?
+
+  bookings Booking[]
+
+  businessProfile       Json?
+  operationalChallenges Json?
+  currentTools          Json?
+  requirements          Json?
+  conversation          Json?
+  assessmentSummary     String?
+
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED
+  LOST
+}
+
+enum AssessmentStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum QualificationStatus {
+  NEEDS_DISCOVERY
+  QUALIFIED
+  NEEDS_REVIEW
+  NOT_READY
+  NOT_A_FIT
+}
+
+enum AssessmentFunnelState {
+  DISCOVERY
+  QUALIFIED
+  AWAITING_CONSENT
+  COLLECTING_NAME
+  COLLECTING_EMAIL
+  BOOKING_LINK_SENT
+  DECLINED
+  CLOSED
+}
+
+model Booking {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+
+  attendeeName  String
+  attendeeEmail String
+
+  startAt  DateTime
+  endAt    DateTime
+  timeZone String
+
+  status BookingStatus @default(BOOKED)
+
+  googleEventId String? @unique
+  meetUrl       String?
+
+  emailDeliveries EmailDelivery[]
+
+  cancelledAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assessmentId])
+  @@index([startAt, endAt])
+  @@index([status, startAt])
+}
+
+enum BookingStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+  RESCHEDULED
+}
+
+model GoogleCalendarConnection {
+  id                    String   @id @default("primary")
+  calendarId            String   @default("primary")
+  encryptedRefreshToken String
+  connectedEmail        String?
+  connected             Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailDelivery {
+  id     String @id @default(cuid())
+  key    String @unique
+  type   EmailDeliveryType
+  status EmailDeliveryStatus @default(PENDING)
+
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  recipient         String?
+  subject           String?
+  html              String?
+  text              String?
+  scheduledFor      DateTime
+  sentAt            DateTime?
+  providerMessageId String?
+
+  attempts  Int     @default(0)
+  lastError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([bookingId, type])
+}
+
+enum EmailDeliveryType {
+  BOOKING_REMINDER
+  POST_MEETING_FOLLOWUP
+  BOOKING_CONFIRMATION
+  ADMIN_BOOKING_NOTIFICATION
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULED
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+
+
+========== package.json ==========
+{
+  "name": "6ixtem",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate --schema=./prisma/schema.prisma && next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "framer-motion": "^14.3.0",
+    "googleapis": "^186.0.0",
+    "lucide-react": "^1.59.0",
+    "next": "16.4.2",
+    "openai": "^7.36.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "resend": "^6.34.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.2",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+

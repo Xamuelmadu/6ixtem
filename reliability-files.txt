@@ -1,0 +1,2327 @@
+﻿6IXTEM BOOKING AND EMAIL RELIABILITY SOURCE DUMP
+Collected: 2026-10-23 14:32:19
+Project: C:\projects\6ixtem
+
+
+==========================================================================================
+FILE: .\prisma\schema.prisma
+==========================================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id        Int        @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  status    LeadStatus @default(NEW)
+  budget    String?
+  project   String?
+  timeline  String?
+  notes     String?
+  score     Int        @default(0)
+  source    String?
+  priority  Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  assessment Assessment?
+}
+
+model Assessment {
+  id        String @id @default(cuid())
+  sessionId String @unique
+
+  leadId Int?  @unique
+  lead   Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  status              AssessmentStatus     @default(IN_PROGRESS)
+  qualificationStatus QualificationStatus  @default(NEEDS_DISCOVERY)
+  qualificationScore  Int                  @default(0)
+
+    // Prospect contact details, collected only after consultation interest
+  contactName  String?
+  contactEmail String?
+
+  // Funnel state
+  funnelState AssessmentFunnelState @default(DISCOVERY)
+
+  // Email delivery tracking
+  assessmentEmailSentAt DateTime?
+  bookingLinkSentAt     DateTime?
+
+  businessName        String?
+  industry            String?
+  businessModel       String?
+  teamSize            String?
+  decisionMaker       String?
+  investmentReadiness String?
+  bookings Booking[]
+
+  businessProfile       Json?
+  operationalChallenges Json?
+  currentTools          Json?
+  requirements          Json?
+  conversation          Json?
+  assessmentSummary     String?
+
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED
+  LOST
+}
+
+enum AssessmentStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum QualificationStatus {
+  NEEDS_DISCOVERY
+  QUALIFIED
+  NEEDS_REVIEW
+  NOT_READY
+  NOT_A_FIT
+}
+
+enum AssessmentFunnelState {
+  DISCOVERY
+  QUALIFIED
+  AWAITING_CONSENT
+  COLLECTING_NAME
+  COLLECTING_EMAIL
+  BOOKING_LINK_SENT
+  DECLINED
+  CLOSED
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  assessmentId String
+  assessment   Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+
+  attendeeName  String
+  attendeeEmail String
+
+  startAt  DateTime
+  endAt    DateTime
+  timeZone String
+
+  status BookingStatus @default(BOOKED)
+
+  googleEventId String? @unique
+  meetUrl       String?
+  emailDeliveries EmailDelivery[]
+  cancelledAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assessmentId])
+  @@index([startAt, endAt])
+  @@index([status, startAt])
+}
+
+enum BookingStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+  RESCHEDULED
+}
+
+model GoogleCalendarConnection {
+  id                    String   @id @default(cuid())
+  calendarId            String   @default("primary")
+  encryptedRefreshToken String
+  connectedEmail        String?
+  connected             Boolean  @default(true)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+
+model EmailDelivery {
+  id          String             @id @default(cuid())
+  key         String             @unique
+  type        EmailDeliveryType
+  status      EmailDeliveryStatus @default(PENDING)
+
+  bookingId   String?
+  booking     Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  scheduledFor DateTime
+  sentAt       DateTime?
+  attempts     Int                 @default(0)
+  lastError    String?
+
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([bookingId, type])
+}
+
+enum EmailDeliveryType {
+  BOOKING_REMINDER
+  POST_MEETING_FOLLOWUP
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+
+==========================================================================================
+FILE: .\src\app\api\cron\6ixtem-emails\route.ts
+==========================================================================================
+FILE NOT FOUND
+
+==========================================================================================
+FILE: .\src\lib\6ixtem-email.ts
+==========================================================================================
+
+import "server-only";
+import { Resend } from "resend";
+
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
+
+const FROM_EMAIL =
+  process.env.EMAIL_FROM || "6ixtem <info@6ixtem.com>";
+
+const ADMIN_EMAIL = process.env.LEAD_NOTIFICATION_EMAIL;
+
+type EmailResult =
+  | { success: true; id: string | null }
+  | { success: false; error: string };
+
+type SendEmailInput = {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+};
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+
+    return entities[character];
+  });
+}
+
+function emailLayout(title: string, body: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+</head>
+<body style="margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+  <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+      <div style="padding:24px 30px;background:#0f172a;color:#ffffff;">
+        <div style="font-size:24px;font-weight:800;letter-spacing:-1px;">
+          6ixtem<span style="color:#60a5fa;">.</span>
+        </div>
+        <div style="margin-top:8px;color:#cbd5e1;font-size:12px;">
+          Business systems. Built around your operations.
+        </div>
+      </div>
+      <div style="padding:30px;line-height:1.7;">
+        <h1 style="font-size:23px;line-height:1.3;margin:0 0 18px;">${escapeHtml(title)}</h1>
+        ${body}
+      </div>
+      <div style="padding:20px 30px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;line-height:1.6;">
+        6ixtem Â· Custom business operating systems for growing service businesses.
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+export async function send6ixtemEmail(
+  input: SendEmailInput,
+): Promise<EmailResult> {
+  if (!resend) {
+    console.error("6ixtem email not sent: RESEND_API_KEY is missing.");
+    return {
+      success: false,
+      error: "Email provider is not configured.",
+    };
+  }
+
+  if (!input.to || !input.to.includes("@")) {
+    return {
+      success: false,
+      error: "A valid recipient email is required.",
+    };
+  }
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    });
+
+    if (result.error) {
+      console.error("Resend email error:", result.error);
+      return {
+        success: false,
+        error: result.error.message || "Resend rejected the email.",
+      };
+    }
+
+    return {
+      success: true,
+      id: result.data?.id ?? null,
+    };
+  } catch (error) {
+    console.error(
+      "6ixtem email exception:",
+      error instanceof Error ? error.message : String(error),
+    );
+
+    return {
+      success: false,
+      error: "The email could not be sent.",
+    };
+  }
+}
+
+export function getAdminNotificationEmail(): string | null {
+  const email = ADMIN_EMAIL?.trim();
+  return email && email.includes("@") ? email : null;
+}
+
+export function emailText(value: string): string {
+  return escapeHtml(value);
+}
+
+export { emailLayout };
+
+
+==========================================================================================
+FILE: .\src\lib\6ixtem-google-calendar.ts
+==========================================================================================
+import "server-only";
+
+import crypto from "node:crypto";
+import { google, type calendar_v3 } from "googleapis";
+import { prisma } from "@/lib/prisma";
+
+export const CONSULTATION_TIME_ZONE = "Africa/Lagos";
+export const CONSULTATION_MINUTES = 30;
+
+const WORKDAY_START_MINUTES = 9 * 60;
+const WORKDAY_END_MINUTES = 17 * 60;
+
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(
+      `Missing required environment variable: ${name}`,
+    );
+  }
+
+  return value;
+}
+
+function getOAuthClient() {
+  return new google.auth.OAuth2(
+    requiredEnv("GOOGLE_CLIENT_ID"),
+    requiredEnv("GOOGLE_CLIENT_SECRET"),
+    requiredEnv("GOOGLE_REDIRECT_URI"),
+  );
+}
+
+function encryptionKey(): Buffer {
+  const key = requiredEnv(
+    "GOOGLE_TOKEN_ENCRYPTION_KEY",
+  );
+
+  if (!/^[a-fA-F0-9]{64}$/.test(key)) {
+    throw new Error(
+      "GOOGLE_TOKEN_ENCRYPTION_KEY must contain 64 hexadecimal characters.",
+    );
+  }
+
+  return Buffer.from(key, "hex");
+}
+
+function encryptToken(token: string): string {
+  const iv = crypto.randomBytes(12);
+
+  const cipher = crypto.createCipheriv(
+    "aes-256-gcm",
+    encryptionKey(),
+    iv,
+  );
+
+  const ciphertext = Buffer.concat([
+    cipher.update(token, "utf8"),
+    cipher.final(),
+  ]);
+
+  const tag = cipher.getAuthTag();
+
+  return [
+    iv.toString("base64url"),
+    tag.toString("base64url"),
+    ciphertext.toString("base64url"),
+  ].join(".");
+}
+
+function decryptToken(payload: string): string {
+  const [ivPart, tagPart, ciphertextPart] =
+    payload.split(".");
+
+  if (!ivPart || !tagPart || !ciphertextPart) {
+    throw new Error(
+      "Stored Google refresh token has an invalid format.",
+    );
+  }
+
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    encryptionKey(),
+    Buffer.from(ivPart, "base64url"),
+  );
+
+  decipher.setAuthTag(
+    Buffer.from(tagPart, "base64url"),
+  );
+
+  return Buffer.concat([
+    decipher.update(
+      Buffer.from(ciphertextPart, "base64url"),
+    ),
+    decipher.final(),
+  ]).toString("utf8");
+}
+
+export function createOAuthState(): string {
+  const timestamp = Date.now().toString();
+
+  const nonce = crypto
+    .randomBytes(24)
+    .toString("base64url");
+
+  const payload = `${timestamp}.${nonce}`;
+
+  const signature = crypto
+    .createHmac(
+      "sha256",
+      requiredEnv("GOOGLE_CALENDAR_CONNECT_SECRET"),
+    )
+    .update(payload)
+    .digest("base64url");
+
+  return `${payload}.${signature}`;
+}
+
+export function verifyOAuthState(
+  state: string | null,
+): boolean {
+  if (!state) return false;
+
+  const parts = state.split(".");
+
+  if (parts.length !== 3) return false;
+
+  const [timestamp, nonce, signature] = parts;
+
+  if (
+    !/^\d+$/.test(timestamp) ||
+    !nonce ||
+    !signature
+  ) {
+    return false;
+  }
+
+  const age = Date.now() - Number(timestamp);
+
+  if (age < 0 || age > 10 * 60 * 1000) {
+    return false;
+  }
+
+  const expected = crypto
+    .createHmac(
+      "sha256",
+      requiredEnv("GOOGLE_CALENDAR_CONNECT_SECRET"),
+    )
+    .update(`${timestamp}.${nonce}`)
+    .digest();
+
+  const actual = Buffer.from(
+    signature,
+    "base64url",
+  );
+
+  return (
+    actual.length === expected.length &&
+    crypto.timingSafeEqual(actual, expected)
+  );
+}
+
+export async function saveGoogleTokens(
+  refreshToken: string,
+  connectedEmail?: string | null,
+) {
+  await prisma.googleCalendarConnection.upsert({
+    where: {
+      id: "primary",
+    },
+
+    create: {
+      id: "primary",
+      encryptedRefreshToken:
+        encryptToken(refreshToken),
+      calendarId: "primary",
+      connectedEmail: connectedEmail ?? null,
+    },
+
+    update: {
+      encryptedRefreshToken:
+        encryptToken(refreshToken),
+      calendarId: "primary",
+      connectedEmail: connectedEmail ?? null,
+    },
+  });
+}
+
+export async function getCalendarClient(): Promise<{
+  calendar: calendar_v3.Calendar;
+  calendarId: string;
+}> {
+  const connection =
+    await prisma.googleCalendarConnection.findUnique({
+      where: {
+        id: "primary",
+      },
+    });
+
+  if (!connection) {
+    throw new Error(
+      "Google Calendar is not connected.",
+    );
+  }
+
+  const oauth = getOAuthClient();
+
+  oauth.setCredentials({
+    refresh_token: decryptToken(
+      connection.encryptedRefreshToken,
+    ),
+  });
+
+  return {
+    calendar: google.calendar({
+      version: "v3",
+      auth: oauth,
+    }),
+    calendarId: connection.calendarId || "primary",
+  };
+}
+
+function datePartsInZone(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CONSULTATION_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    weekday: "short",
+  }).formatToParts(date);
+
+  const map = Object.fromEntries(
+    parts.map((part) => [
+      part.type,
+      part.value,
+    ]),
+  );
+
+  const weekdays: Record<string, number> = {
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+    Sun: 7,
+  };
+
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    weekday: weekdays[map.weekday] ?? 0,
+  };
+}
+
+/**
+ * Convert a Lagos local date and time to a UTC instant.
+ * Nigeria uses UTC+1 and does not observe daylight saving time.
+ */
+function localDateToUtc(
+  dateString: string,
+  hour: number,
+  minute = 0,
+): Date {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+
+  if (!match) {
+    throw new Error(
+      "Date must use YYYY-MM-DD.",
+    );
+  }
+
+  const [, year, month, day] = match;
+
+  return new Date(
+    Date.UTC(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      hour - 1,
+      minute,
+    ),
+  );
+}
+
+export function localDateRange(dateString: string) {
+  return {
+    start: localDateToUtc(dateString, 0),
+    end: localDateToUtc(
+      addLocalDays(dateString, 1),
+      0,
+    ),
+  };
+}
+
+export function addLocalDays(
+  dateString: string,
+  days: number,
+): string {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+
+  if (!match) {
+    throw new Error(
+      "Date must use YYYY-MM-DD.",
+    );
+  }
+
+  const date = new Date(
+    Date.UTC(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]) + days,
+    ),
+  );
+
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+export function isValidLocalDate(
+  dateString: string,
+): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return false;
+  }
+
+  const date = new Date(
+    `${dateString}T00:00:00Z`,
+  );
+
+  return (
+    Number.isFinite(date.getTime()) &&
+    date.toISOString().slice(0, 10) === dateString
+  );
+}
+
+export function isValidConsultationSlot(
+  start: Date,
+): boolean {
+  if (!Number.isFinite(start.getTime())) {
+    return false;
+  }
+
+  const parts = datePartsInZone(start);
+
+  const minutes =
+    parts.hour * 60 + parts.minute;
+
+  return (
+    parts.weekday >= 1 &&
+    parts.weekday <= 5 &&
+    parts.minute === 0 &&
+    minutes >= WORKDAY_START_MINUTES &&
+    minutes + CONSULTATION_MINUTES <=
+      WORKDAY_END_MINUTES &&
+    minutes % CONSULTATION_MINUTES === 0 &&
+    start.getTime() > Date.now()
+  );
+}
+
+export function createSlotsForDate(
+  dateString: string,
+  busy: Array<{
+    start: Date;
+    end: Date;
+  }>,
+) {
+  const range = localDateRange(dateString);
+
+  // Noon in Lagos reliably identifies the weekday
+  // for the requested local calendar date.
+  const weekdayParts = datePartsInZone(
+    new Date(
+      range.start.getTime() +
+        12 * 60 * 60 * 1000,
+    ),
+  );
+
+  if (
+    weekdayParts.weekday < 1 ||
+    weekdayParts.weekday > 5
+  ) {
+    return [];
+  }
+
+  const slots: Array<{
+    startAt: string;
+    endAt: string;
+    label: string;
+  }> = [];
+
+  for (
+    let minute = WORKDAY_START_MINUTES;
+    minute + CONSULTATION_MINUTES <=
+    WORKDAY_END_MINUTES;
+    minute += CONSULTATION_MINUTES
+  ) {
+    const start = localDateToUtc(
+      dateString,
+      Math.floor(minute / 60),
+      minute % 60,
+    );
+
+    const end = new Date(
+      start.getTime() +
+        CONSULTATION_MINUTES * 60_000,
+    );
+
+    if (start.getTime() <= Date.now()) {
+      continue;
+    }
+
+    const overlaps = busy.some(
+      (interval) =>
+        start.getTime() < interval.end.getTime() &&
+        end.getTime() > interval.start.getTime(),
+    );
+
+    if (overlaps) continue;
+
+    slots.push({
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+
+      label: new Intl.DateTimeFormat("en-NG", {
+        timeZone: CONSULTATION_TIME_ZONE,
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(start),
+    });
+  }
+
+  return slots;
+}
+
+export async function getBusyIntervals(
+  start: Date,
+  end: Date,
+) {
+  const { calendar, calendarId } =
+    await getCalendarClient();
+
+  const [freeBusy, bookings] = await Promise.all([
+    calendar.freebusy.query({
+      requestBody: {
+        timeMin: start.toISOString(),
+        timeMax: end.toISOString(),
+        timeZone: CONSULTATION_TIME_ZONE,
+        items: [
+          {
+            id: calendarId,
+          },
+        ],
+      },
+    }),
+
+    prisma.booking.findMany({
+      where: {
+        status: "BOOKED",
+        startAt: {
+          lt: end,
+        },
+        endAt: {
+          gt: start,
+        },
+      },
+
+      select: {
+        startAt: true,
+        endAt: true,
+      },
+    }),
+  ]);
+
+  const googleBusy =
+    freeBusy.data.calendars?.[calendarId]?.busy ?? [];
+
+  return [
+    ...googleBusy
+      .filter(
+        (item) => item.start && item.end,
+      )
+      .map((item) => ({
+        start: new Date(item.start!),
+        end: new Date(item.end!),
+      })),
+
+    ...bookings.map((booking) => ({
+      start: booking.startAt,
+      end: booking.endAt,
+    })),
+  ];
+}
+
+export function buildOAuthClient() {
+  return getOAuthClient();
+}
+
+export const CALENDAR_SCOPE =
+  "https://www.googleapis.com/auth/calendar";
+
+==========================================================================================
+FILE: .\src\app\api\6ixtem\calendar\book\route.ts
+==========================================================================================
+
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+
+import {
+  CONSULTATION_MINUTES,
+  CONSULTATION_TIME_ZONE,
+  getBusyIntervals,
+  getCalendarClient,
+  isValidConsultationSlot,
+} from "@/lib/6ixtem-google-calendar";
+
+import {
+  send6ixtemEmail,
+  getAdminNotificationEmail,
+  emailLayout,
+  escapeHtml,
+  emailText,
+} from "@/lib/6ixtem-email";
+
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+function isValidEmail(value: string): boolean {
+  return (
+    value.length <= 254 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  );
+}
+
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("en-IE", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: CONSULTATION_TIME_ZONE,
+  }).format(date);
+}
+
+function getSiteUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+    "https://6ixtem.com"
+  );
+}
+
+async function sendBookingEmails(input: {
+  bookingId: string;
+  assessmentId: string;
+  attendeeName: string;
+  attendeeEmail: string;
+  businessName: string | null;
+  startAt: Date;
+  endAt: Date;
+  meetUrl: string | null;
+}): Promise<{
+  attendeeEmailSent: boolean;
+  adminEmailSent: boolean;
+}> {
+  const {
+    bookingId,
+    assessmentId,
+    attendeeName,
+    attendeeEmail,
+    businessName,
+    startAt,
+    endAt,
+    meetUrl,
+  } = input;
+
+  const dateTime = formatDateTime(startAt);
+  const endDateTime = formatDateTime(endAt);
+
+  const safeName = escapeHtml(attendeeName);
+  const safeBusiness = escapeHtml(
+    businessName || "Your business",
+  );
+  const safeDateTime = escapeHtml(dateTime);
+  const safeEndDateTime = escapeHtml(endDateTime);
+
+  const meetingSection = meetUrl
+    ? `<p><strong>Google Meet:</strong> <a href="${escapeHtml(meetUrl)}">${escapeHtml(meetUrl)}</a></p>`
+    : "<p>Your calendar invitation contains the meeting details. If the Google Meet link is not yet available, it may appear after Google finishes preparing the event.</p>";
+
+  const siteUrl = getSiteUrl();
+
+  let attendeeEmailSent = false;
+  let adminEmailSent = false;
+
+  // Send the attendee confirmation independently. A mail failure must
+  // not undo the saved booking or remove the calendar event.
+  try {
+    await send6ixtemEmail({
+      to: attendeeEmail,
+      subject: "Your 6ixtem consultation is confirmed",
+      text: emailText(
+        [
+          `Hi ${attendeeName},`,
+          "",
+          "Your 6ixtem consultation has been booked successfully.",
+          "",
+          `Business: ${businessName || "Your business"}`,
+          `Start: ${dateTime}`,
+          `End: ${endDateTime}`,
+          `Time zone: ${CONSULTATION_TIME_ZONE}`,
+          meetUrl ? `Google Meet: ${meetUrl}` : "",
+          "",
+          "A calendar invitation has also been requested.",
+          `Booking reference: ${bookingId}`,
+          "",
+          `Visit 6ixtem: ${siteUrl}`,
+          "",
+          "The 6ixtem Team",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      ),
+      html: emailLayout(`
+        <h1>Your consultation is confirmed</h1>
+        <p>Hi ${safeName},</p>
+        <p>Your consultation with the 6ixtem team has been booked successfully.</p>
+
+        <div style="padding:16px;border:1px solid #e2e8f0;border-radius:12px;">
+          <p><strong>Business:</strong> ${safeBusiness}</p>
+          <p><strong>Starts:</strong> ${safeDateTime}</p>
+          <p><strong>Ends:</strong> ${safeEndDateTime}</p>
+          <p><strong>Time zone:</strong> ${escapeHtml(CONSULTATION_TIME_ZONE)}</p>
+          ${meetingSection}
+          <p><strong>Booking reference:</strong> ${escapeHtml(bookingId)}</p>
+        </div>
+
+        <p>A calendar invitation has also been requested. Please keep the invitation for your records.</p>
+        <p><a href="${escapeHtml(siteUrl)}">Visit 6ixtem</a></p>
+        <p>The 6ixtem Team</p>
+      `),
+    });
+
+    attendeeEmailSent = true;
+  } catch (error) {
+    console.error("6ixtem attendee booking email failed:", {
+      bookingId,
+      message:
+        error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // Admin notification is independent of attendee delivery.
+  const adminEmail = getAdminNotificationEmail();
+
+  if (adminEmail) {
+    try {
+      await send6ixtemEmail({
+        to: adminEmail,
+        subject: `New 6ixtem consultation booking â€” ${attendeeName}`,
+        text: emailText(
+          [
+            "A new 6ixtem consultation has been booked.",
+            "",
+            `Name: ${attendeeName}`,
+            `Email: ${attendeeEmail}`,
+            `Business: ${businessName || "Not provided"}`,
+            `Start: ${dateTime}`,
+            `End: ${endDateTime}`,
+            `Time zone: ${CONSULTATION_TIME_ZONE}`,
+            meetUrl ? `Google Meet: ${meetUrl}` : "Google Meet: Not available yet",
+            `Booking reference: ${bookingId}`,
+            `Assessment reference: ${assessmentId}`,
+          ].join("\n"),
+        ),
+        html: emailLayout(`
+          <h1>New consultation booking</h1>
+          <p>A prospect has booked a consultation with 6ixtem.</p>
+
+          <p><strong>Name:</strong> ${safeName}</p>
+          <p><strong>Email:</strong> ${escapeHtml(attendeeEmail)}</p>
+          <p><strong>Business:</strong> ${safeBusiness}</p>
+          <p><strong>Starts:</strong> ${safeDateTime}</p>
+          <p><strong>Ends:</strong> ${safeEndDateTime}</p>
+          <p><strong>Time zone:</strong> ${escapeHtml(CONSULTATION_TIME_ZONE)}</p>
+          ${meetingSection}
+          <p><strong>Booking reference:</strong> ${escapeHtml(bookingId)}</p>
+          <p><strong>Assessment reference:</strong> ${escapeHtml(assessmentId)}</p>
+        `),
+      });
+
+      adminEmailSent = true;
+    } catch (error) {
+      console.error("6ixtem admin booking email failed:", {
+        bookingId,
+        message:
+          error instanceof Error ? error.message : String(error),
+      });
+    }
+  } else {
+    console.warn(
+      "6ixtem admin booking email skipped: LEAD_NOTIFICATION_EMAIL is not configured.",
+    );
+  }
+
+  return {
+    attendeeEmailSent,
+    adminEmailSent,
+  };
+}
+
+export async function POST(request: Request) {
+  let createdEventId: string | null = null;
+  let calendarIdForCleanup: string | null = null;
+  let bookingPersisted = false;
+
+  try {
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Request body must be valid JSON." },
+        { status: 400 },
+      );
+    }
+
+    if (!isRecord(body)) {
+      return NextResponse.json(
+        { error: "Invalid request body." },
+        { status: 400 },
+      );
+    }
+
+    const assessmentId =
+      typeof body.assessmentId === "string"
+        ? body.assessmentId.trim()
+        : "";
+
+    const submittedName =
+      typeof body.attendeeName === "string"
+        ? body.attendeeName.trim()
+        : "";
+
+    const submittedEmail =
+      typeof body.attendeeEmail === "string"
+        ? body.attendeeEmail.trim().toLowerCase()
+        : "";
+
+    const startAtRaw =
+      typeof body.startAt === "string"
+        ? body.startAt
+        : "";
+
+    const startAt = new Date(startAtRaw);
+
+    if (
+      !assessmentId ||
+      !Number.isFinite(startAt.getTime()) ||
+      !isValidConsultationSlot(startAt)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Provide a valid assessment and choose a valid future consultation slot.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      (submittedName && (
+        submittedName.length < 2 ||
+        submittedName.length > 120
+      )) ||
+      (submittedEmail && !isValidEmail(submittedEmail))
+    ) {
+      return NextResponse.json(
+        { error: "Please provide a valid name and email address." },
+        { status: 400 },
+      );
+    }
+
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      select: {
+        id: true,
+        status: true,
+        qualificationStatus: true,
+        businessName: true,
+        assessmentSummary: true,
+        contactName: true,
+        contactEmail: true,
+        funnelState: true,
+      },
+    });
+
+    if (
+      !assessment ||
+      assessment.status !== "COMPLETED" ||
+      assessment.qualificationStatus !== "QUALIFIED"
+    ) {
+      return NextResponse.json(
+        { error: "This assessment is not eligible for booking." },
+        { status: 403 },
+      );
+    }
+
+    // Prefer contact details captured during the assessment funnel.
+    // If they exist, do not allow a booking request to substitute a
+    // different identity or email address.
+    const attendeeName =
+      assessment.contactName?.trim() || submittedName;
+
+    const attendeeEmail =
+      assessment.contactEmail?.trim().toLowerCase() ||
+      submittedEmail;
+
+    if (
+      !attendeeName ||
+      attendeeName.length < 2 ||
+      attendeeName.length > 120 ||
+      !attendeeEmail ||
+      !isValidEmail(attendeeEmail)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Please complete the assessment contact details before booking.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      assessment.contactEmail &&
+      submittedEmail &&
+      submittedEmail !== assessment.contactEmail.trim().toLowerCase()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Please book using the email address associated with your assessment.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const endAt = new Date(
+      startAt.getTime() + CONSULTATION_MINUTES * 60_000,
+    );
+
+    // Do not permit a second active booking for the same assessment.
+    const assessmentBooking = await prisma.booking.findFirst({
+      where: {
+        assessmentId,
+        status: "BOOKED",
+      },
+      select: {
+        id: true,
+        startAt: true,
+      },
+    });
+
+    if (assessmentBooking) {
+      return NextResponse.json(
+        {
+          error:
+            "This assessment already has a confirmed booking. Please contact the 6ixtem team if you need to change it.",
+          existingBooking: {
+            id: assessmentBooking.id,
+            startAt: assessmentBooking.startAt,
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    // Check the database for overlapping active bookings.
+    const existing = await prisma.booking.findFirst({
+      where: {
+        status: "BOOKED",
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        {
+          error:
+            "That slot has just been booked. Please choose another time.",
+        },
+        { status: 409 },
+      );
+    }
+
+    // Recheck the connected Google Calendar before creating the event.
+    const busy = await getBusyIntervals(startAt, endAt);
+
+    const overlaps = busy.some(
+      (interval) =>
+        startAt < interval.end && endAt > interval.start,
+    );
+
+    if (overlaps) {
+      return NextResponse.json(
+        {
+          error:
+            "That time is no longer available. Please choose another slot.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const { calendar, calendarId } = await getCalendarClient();
+    calendarIdForCleanup = calendarId;
+
+    const eventResponse = await calendar.events.insert({
+      calendarId,
+      conferenceDataVersion: 1,
+      sendUpdates: "all",
+      requestBody: {
+        summary: `6ixtem Consultation${
+          assessment.businessName
+            ? ` â€” ${assessment.businessName}`
+            : ""
+        }`,
+        description: [
+          "6ixtem business operations consultation.",
+          `Assessment reference: ${assessment.id}`,
+          assessment.assessmentSummary
+            ? `Assessment summary: ${assessment.assessmentSummary.slice(0, 1500)}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        start: {
+          dateTime: startAt.toISOString(),
+          timeZone: CONSULTATION_TIME_ZONE,
+        },
+        end: {
+          dateTime: endAt.toISOString(),
+          timeZone: CONSULTATION_TIME_ZONE,
+        },
+        attendees: [
+          {
+            email: attendeeEmail,
+            displayName: attendeeName,
+          },
+        ],
+        conferenceData: {
+          createRequest: {
+            requestId: crypto.randomUUID(),
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
+      },
+    });
+
+    createdEventId = eventResponse.data.id ?? null;
+
+    if (!createdEventId) {
+      throw new Error(
+        "Google Calendar did not return an event ID.",
+      );
+    }
+
+    // Conference creation may be asynchronous. Retrieve the event
+    // again to obtain a Meet URL when it is already available.
+    let refreshedEvent = eventResponse.data;
+
+    try {
+      const refreshed = await calendar.events.get({
+        calendarId,
+        eventId: createdEventId,
+      });
+
+      refreshedEvent = refreshed.data;
+    } catch (error) {
+      console.warn(
+        "Could not refresh Google Calendar event details yet:",
+        error,
+      );
+    }
+
+    const meetUrl =
+      refreshedEvent.hangoutLink ??
+      refreshedEvent.conferenceData?.entryPoints?.find(
+        (entry) => entry.entryPointType === "video",
+      )?.uri ??
+      null;
+
+    // Persist the booking before attempting email delivery.
+    const booking = await prisma.booking.create({
+      data: {
+        assessmentId,
+        attendeeName,
+        attendeeEmail,
+        startAt,
+        endAt,
+        timeZone: CONSULTATION_TIME_ZONE,
+        status: "BOOKED",
+        googleEventId: createdEventId,
+        meetUrl,
+      },
+      select: {
+        id: true,
+        assessmentId: true,
+        attendeeName: true,
+        attendeeEmail: true,
+        startAt: true,
+        endAt: true,
+        timeZone: true,
+        status: true,
+        meetUrl: true,
+        googleEventId: true,
+      },
+    });
+
+    bookingPersisted = true;
+
+    // The booking is now committed. Email errors are caught separately
+    // and must never cause deletion of the confirmed calendar event.
+    const emailResults = await sendBookingEmails({
+      bookingId: booking.id,
+      assessmentId,
+      attendeeName,
+      attendeeEmail,
+      businessName: assessment.businessName,
+      startAt,
+      endAt,
+      meetUrl,
+    });
+
+    const message = emailResults.attendeeEmailSent
+      ? meetUrl
+        ? "Your consultation is booked. A confirmation email and calendar invitation have been sent."
+        : "Your consultation is booked and a confirmation email has been sent. Google Meet details may take a short time to become available."
+      : "Your consultation is booked, but we could not send the confirmation email. Your booking remains confirmed; please keep the booking reference and contact the 6ixtem team if needed.";
+
+    return NextResponse.json(
+      {
+        booking,
+        calendarEventId: createdEventId,
+        meetUrl,
+        email: {
+          attendeeSent: emailResults.attendeeEmailSent,
+          adminSent: emailResults.adminEmailSent,
+        },
+        message,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("6ixtem booking error:", error);
+
+    // Only remove the Google event if booking persistence did not
+    // succeed. Email failures happen after persistence and are handled
+    // above, so they do not delete an otherwise valid booking.
+    if (
+      createdEventId &&
+      calendarIdForCleanup &&
+      !bookingPersisted
+    ) {
+      try {
+        const { calendar } = await getCalendarClient();
+
+        await calendar.events.delete({
+          calendarId: calendarIdForCleanup,
+          eventId: createdEventId,
+          sendUpdates: "all",
+        });
+      } catch (cleanupError) {
+        console.error(
+          "Could not clean up the Google Calendar event:",
+          cleanupError,
+        );
+      }
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          "We could not complete the booking. Please refresh availability and try again.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+
+==========================================================================================
+FILE: .\src\app\api\6ixtem\calendar\availability\route.ts
+==========================================================================================
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+import {
+  addLocalDays,
+  createSlotsForDate,
+  getBusyIntervals,
+  isValidLocalDate,
+  localDateRange,
+} from "@/lib/6ixtem-google-calendar";
+
+export async function GET(request: Request) {
+  try {
+    const url = new URL(request.url);
+
+    const assessmentId =
+      url.searchParams.get("assessmentId") ?? "";
+
+    const from =
+      url.searchParams.get("from") ?? "";
+
+    const days = Number(
+      url.searchParams.get("days") ?? "14",
+    );
+
+    if (
+      !assessmentId ||
+      !isValidLocalDate(from) ||
+      !Number.isInteger(days) ||
+      days < 1 ||
+      days > 21
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Provide a valid assessmentId, a from date in YYYY-MM-DD format, and days between 1 and 21.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const assessment =
+      await prisma.assessment.findUnique({
+        where: {
+          id: assessmentId,
+        },
+
+        select: {
+          status: true,
+          qualificationStatus: true,
+        },
+      });
+
+    if (
+      !assessment ||
+      assessment.status !== "COMPLETED" ||
+      assessment.qualificationStatus !== "QUALIFIED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Only completed, qualified assessments can book a consultation.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const rangeStart =
+      localDateRange(from).start;
+
+    const rangeEnd =
+      localDateRange(
+        addLocalDays(from, days),
+      ).start;
+
+    const busy = await getBusyIntervals(
+      rangeStart,
+      rangeEnd,
+    );
+
+    const dates: Array<{
+      date: string;
+      slots: ReturnType<
+        typeof createSlotsForDate
+      >;
+    }> = [];
+
+    for (let i = 0; i < days; i++) {
+      const date = addLocalDays(from, i);
+
+      dates.push({
+        date,
+        slots: createSlotsForDate(
+          date,
+          busy,
+        ),
+      });
+    }
+
+    return NextResponse.json({
+      timeZone: "Africa/Lagos",
+      durationMinutes: 30,
+      dates,
+    });
+  } catch (error) {
+    console.error(
+      "6ixtem availability error:",
+      error,
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Could not retrieve calendar availability.",
+      },
+      { status: 503 },
+    );
+  }
+}
+
+==========================================================================================
+FILE: .\src\app\api\6ixtem\calendar\cancel\route.ts
+==========================================================================================
+
+import { BookingStatus } from "@prisma/client";
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+import { getCalendarClient } from "@/lib/6ixtem-google-calendar";
+
+function isAuthorized(request: Request): boolean {
+  const expected = process.env.BOOKING_MANAGEMENT_SECRET;
+  const supplied = request.headers.get("x-booking-management-secret");
+
+  return Boolean(expected && supplied && supplied === expected);
+}
+
+export async function POST(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json(
+      { error: "Unauthorized." },
+      { status: 401 },
+    );
+  }
+
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON request body." },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("bookingId" in body) ||
+    typeof body.bookingId !== "string" ||
+    !body.bookingId.trim()
+  ) {
+    return NextResponse.json(
+      { error: "A valid bookingId is required." },
+      { status: 400 },
+    );
+  }
+
+  const bookingId = body.bookingId.trim();
+
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        status: true,
+        googleEventId: true,
+        cancelledAt: true,
+      },
+    });
+
+    if (!booking) {
+      return NextResponse.json(
+        { error: "Booking not found." },
+        { status: 404 },
+      );
+    }
+
+    if (
+      booking.status === BookingStatus.CANCELLED ||
+      booking.cancelledAt
+    ) {
+      return NextResponse.json({
+        success: true,
+        message: "The booking is already cancelled.",
+      });
+    }
+
+    if (booking.status !== BookingStatus.BOOKED) {
+      return NextResponse.json(
+        {
+          error: `Cannot cancel a booking with status ${booking.status}.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Remove the calendar event first. If Google fails unexpectedly,
+    // leave the database booking unchanged and retry the operation.
+    if (booking.googleEventId) {
+      const { calendar, calendarId } = await getCalendarClient();
+
+      try {
+        await calendar.events.delete({
+          calendarId,
+          eventId: booking.googleEventId,
+          sendUpdates: "all",
+        });
+      } catch (error) {
+        const status = (
+          error as { code?: number; response?: { status?: number } }
+        )?.response?.status ??
+          (error as { code?: number })?.code;
+
+        // A missing Google event is already effectively deleted.
+        if (status !== 404 && status !== 410) {
+          throw error;
+        }
+      }
+    }
+
+    const updated = await prisma.booking.updateMany({
+      where: {
+        id: booking.id,
+        status: BookingStatus.BOOKED,
+        cancelledAt: null,
+      },
+      data: {
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+      },
+    });
+
+    if (updated.count !== 1) {
+      return NextResponse.json(
+        {
+          error:
+            "The booking changed while cancellation was in progress. Refresh and check its current status.",
+        },
+        { status: 409 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      bookingId: booking.id,
+      status: BookingStatus.CANCELLED,
+      message: "The booking has been cancelled.",
+    });
+  } catch (error) {
+    console.error("6ixtem booking cancellation failed:", error);
+
+    return NextResponse.json(
+      {
+        error:
+          "Cancellation could not be completed. Check the booking and calendar before retrying.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+
+==========================================================================================
+FILE: .\src\app\api\6ixtem\calendar\reschedule\route.ts
+==========================================================================================
+
+import crypto from "node:crypto";
+import {
+  BookingStatus,
+  Prisma,
+} from "@prisma/client";
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+
+import {
+  CONSULTATION_MINUTES,
+  CONSULTATION_TIME_ZONE,
+  getBusyIntervals,
+  getCalendarClient,
+  isValidConsultationSlot,
+} from "@/lib/6ixtem-google-calendar";
+
+function isAuthorized(request: Request): boolean {
+  const expected = process.env.BOOKING_MANAGEMENT_SECRET;
+  const supplied = request.headers.get("x-booking-management-secret");
+
+  return Boolean(expected && supplied && supplied === expected);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+export async function POST(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json(
+      { error: "Unauthorized." },
+      { status: 401 },
+    );
+  }
+
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON request body." },
+      { status: 400 },
+    );
+  }
+
+  if (
+    !isRecord(body) ||
+    typeof body.bookingId !== "string" ||
+    typeof body.startAt !== "string"
+  ) {
+    return NextResponse.json(
+      { error: "bookingId and startAt are required." },
+      { status: 400 },
+    );
+  }
+
+  const bookingId = body.bookingId.trim();
+  const startAt = new Date(body.startAt);
+
+  if (
+    !bookingId ||
+    !Number.isFinite(startAt.getTime()) ||
+    !isValidConsultationSlot(startAt)
+  ) {
+    return NextResponse.json(
+      { error: "Choose a valid future consultation slot." },
+      { status: 400 },
+    );
+  }
+
+  const endAt = new Date(
+    startAt.getTime() + CONSULTATION_MINUTES * 60_000,
+  );
+
+  let newGoogleEventId: string | null = null;
+  let databaseCommitted = false;
+
+  try {
+    const oldBooking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        assessment: {
+          select: {
+            id: true,
+            businessName: true,
+            assessmentSummary: true,
+          },
+        },
+      },
+    });
+
+    if (!oldBooking) {
+      return NextResponse.json(
+        { error: "Booking not found." },
+        { status: 404 },
+      );
+    }
+
+    if (oldBooking.status !== BookingStatus.BOOKED) {
+      return NextResponse.json(
+        {
+          error: "Only an active booking can be rescheduled.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (startAt.getTime() === oldBooking.startAt.getTime()) {
+      return NextResponse.json(
+        { error: "Choose a different time to reschedule." },
+        { status: 400 },
+      );
+    }
+
+    const conflictingBooking = await prisma.booking.findFirst({
+      where: {
+        status: BookingStatus.BOOKED,
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+      },
+      select: { id: true },
+    });
+
+    if (conflictingBooking) {
+      return NextResponse.json(
+        {
+          error: "That slot is already booked. Choose another time.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const busy = await getBusyIntervals(startAt, endAt);
+
+    if (
+      busy.some(
+        (interval) => startAt < interval.end && endAt > interval.start,
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error: "That time is no longer available in Google Calendar.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const { calendar, calendarId } = await getCalendarClient();
+
+    const eventResponse = await calendar.events.insert({
+      calendarId,
+      conferenceDataVersion: 1,
+      sendUpdates: "all",
+      requestBody: {
+        summary: `6ixtem Consultation${
+          oldBooking.assessment.businessName
+            ? ` â€” ${oldBooking.assessment.businessName}`
+            : ""
+        }`,
+        description: [
+          "Rescheduled 6ixtem business operations consultation.",
+          `Assessment reference: ${oldBooking.assessmentId}`,
+          `Previous booking reference: ${oldBooking.id}`,
+          oldBooking.assessment.assessmentSummary
+            ? `Assessment summary: ${oldBooking.assessment.assessmentSummary.slice(0, 1500)}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        start: {
+          dateTime: startAt.toISOString(),
+          timeZone: CONSULTATION_TIME_ZONE,
+        },
+        end: {
+          dateTime: endAt.toISOString(),
+          timeZone: CONSULTATION_TIME_ZONE,
+        },
+        attendees: [
+          {
+            email: oldBooking.attendeeEmail,
+            displayName: oldBooking.attendeeName,
+          },
+        ],
+        conferenceData: {
+          createRequest: {
+            requestId: crypto.randomUUID(),
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
+      },
+    });
+
+    newGoogleEventId = eventResponse.data.id ?? null;
+
+    if (!newGoogleEventId) {
+      throw new Error("Google Calendar returned no event ID.");
+    }
+
+    const refreshed = await calendar.events.get({
+      calendarId,
+      eventId: newGoogleEventId,
+    });
+
+    const meetUrl =
+      refreshed.data.hangoutLink ??
+      refreshed.data.conferenceData?.entryPoints?.find(
+        (entry) => entry.entryPointType === "video",
+      )?.uri ??
+      null;
+
+    const replacement = await prisma.$transaction(
+      async (tx) => {
+        // Compare-and-set prevents two concurrent reschedules from
+        // both replacing the same original booking.
+        const changed = await tx.booking.updateMany({
+          where: {
+            id: oldBooking.id,
+            status: BookingStatus.BOOKED,
+            cancelledAt: null,
+          },
+          data: {
+            status: BookingStatus.RESCHEDULED,
+          },
+        });
+
+        if (changed.count !== 1) {
+          throw new Error("BOOKING_STATE_CHANGED");
+        }
+
+        const overlapping = await tx.booking.findFirst({
+          where: {
+            id: { not: oldBooking.id },
+            status: BookingStatus.BOOKED,
+            startAt: { lt: endAt },
+            endAt: { gt: startAt },
+          },
+          select: { id: true },
+        });
+
+        if (overlapping) {
+          throw new Error("SLOT_BECAME_UNAVAILABLE");
+        }
+
+        return tx.booking.create({
+          data: {
+            assessmentId: oldBooking.assessmentId,
+            attendeeName: oldBooking.attendeeName,
+            attendeeEmail: oldBooking.attendeeEmail,
+            startAt,
+            endAt,
+            timeZone: CONSULTATION_TIME_ZONE,
+            status: BookingStatus.BOOKED,
+            googleEventId: newGoogleEventId,
+            meetUrl,
+          },
+          select: {
+            id: true,
+            attendeeName: true,
+            attendeeEmail: true,
+            startAt: true,
+            endAt: true,
+            timeZone: true,
+            status: true,
+            meetUrl: true,
+          },
+        });
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      },
+    );
+
+    databaseCommitted = true;
+
+    // Only remove the old event after the database transaction commits.
+    // If deletion fails, reconciliation can flag the orphaned event.
+    if (oldBooking.googleEventId) {
+      try {
+        await calendar.events.delete({
+          calendarId,
+          eventId: oldBooking.googleEventId,
+          sendUpdates: "all",
+        });
+      } catch (cleanupError) {
+        console.error(
+          "Replacement booking saved, but old calendar event deletion failed:",
+          {
+            oldBookingId: oldBooking.id,
+            newBookingId: replacement.id,
+            error: cleanupError,
+          },
+        );
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      previousBookingId: oldBooking.id,
+      previousStatus: BookingStatus.RESCHEDULED,
+      booking: replacement,
+      message:
+        "The consultation has been rescheduled. The replacement booking is saved in the database.",
+    });
+  } catch (error) {
+    if (newGoogleEventId && !databaseCommitted) {
+      try {
+        const { calendar, calendarId } = await getCalendarClient();
+
+        await calendar.events.delete({
+          calendarId,
+          eventId: newGoogleEventId,
+          sendUpdates: "all",
+        });
+      } catch (cleanupError) {
+        console.error(
+          "Could not remove the uncommitted replacement event:",
+          cleanupError,
+        );
+      }
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "BOOKING_STATE_CHANGED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The original booking changed during rescheduling. Refresh and try again.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "SLOT_BECAME_UNAVAILABLE"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "That slot was booked by someone else. Choose another time.",
+        },
+        { status: 409 },
+      );
+    }
+
+    console.error("6ixtem rescheduling failed:", error);
+
+    return NextResponse.json(
+      {
+        error:
+          "The consultation could not be rescheduled. Check the booking and calendar before retrying.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+
+==========================================================================================
+FILE: .\src\app\api\6ixtem\calendar\connect\route.ts
+==========================================================================================
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+
+import {
+  buildOAuthClient,
+  CALENDAR_SCOPE,
+  createOAuthState,
+} from "@/lib/6ixtem-google-calendar";
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+
+  const suppliedSecret =
+    url.searchParams.get("secret");
+
+  const expectedSecret =
+    process.env.GOOGLE_CALENDAR_CONNECT_SECRET;
+
+  if (
+    !expectedSecret ||
+    !suppliedSecret ||
+    Buffer.byteLength(suppliedSecret) !==
+      Buffer.byteLength(expectedSecret)
+  ) {
+    return NextResponse.json(
+      { error: "Not authorized." },
+      { status: 401 },
+    );
+  }
+
+  if (
+    !crypto.timingSafeEqual(
+      Buffer.from(suppliedSecret),
+      Buffer.from(expectedSecret),
+    )
+  ) {
+    return NextResponse.json(
+      { error: "Not authorized." },
+      { status: 401 },
+    );
+  }
+
+  try {
+    const oauth = buildOAuthClient();
+    const state = createOAuthState();
+
+    const authUrl = oauth.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent",
+
+      scope: [
+        CALENDAR_SCOPE,
+        "https://www.googleapis.com/auth/userinfo.email",
+      ],
+
+      state,
+    });
+
+    return NextResponse.redirect(authUrl);
+  } catch (error) {
+    console.error(
+      "Google Calendar connection error:",
+      error,
+    );
+
+    return NextResponse.json(
+      { error: "Could not start Google authorization." },
+      { status: 500 },
+    );
+  }
+}
+
+==========================================================================================
+FILE: .\src\app\api\6ixtem\calendar\callback\route.ts
+==========================================================================================
+import { NextResponse } from "next/server";
+import { google } from "googleapis";
+
+import {
+  buildOAuthClient,
+  saveGoogleTokens,
+  verifyOAuthState,
+} from "@/lib/6ixtem-google-calendar";
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const oauthError = url.searchParams.get("error");
+
+  if (oauthError) {
+    return NextResponse.json(
+      {
+        error:
+          "Google Calendar authorization was declined.",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (
+    !code ||
+    !verifyOAuthState(state)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Invalid or expired Google OAuth state.",
+      },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const oauth = buildOAuthClient();
+
+    const { tokens } = await oauth.getToken(code);
+
+    if (!tokens.refresh_token) {
+      return NextResponse.json(
+        {
+          error:
+            "Google did not return a refresh token. Revoke the application's access in your Google Account, then connect again.",
+        },
+        { status: 400 },
+      );
+    }
+
+    oauth.setCredentials(tokens);
+
+    const oauth2 = google.oauth2({
+      version: "v2",
+      auth: oauth,
+    });
+
+    const profile =
+      await oauth2.userinfo.get();
+
+    await saveGoogleTokens(
+      tokens.refresh_token,
+      profile.data.email,
+    );
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      url.origin;
+
+    return NextResponse.redirect(
+      new URL(
+        "/6ixtem/assessment/booking?calendar=connected",
+        baseUrl,
+      ),
+    );
+  } catch (error) {
+    console.error(
+      "Google Calendar OAuth callback failed:",
+      error,
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Could not connect Google Calendar.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+==========================================================================================
+FILE: .\vercel.json
+==========================================================================================
+
+{
+  "crons": [
+    {
+      "path": "/api/cron/6ixtem-emails",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
+
+
+==========================================================================================
+FILE: .\package.json
+==========================================================================================
+{
+  "name": "6ixtem",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate --schema=./prisma/schema.prisma && next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "framer-motion": "^14.3.0",
+    "googleapis": "^186.0.0",
+    "lucide-react": "^1.59.0",
+    "next": "16.4.2",
+    "openai": "^7.36.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "resend": "^6.34.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.2",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+
+
+==========================================================================================
+FILE: .\.env.example
+==========================================================================================
+FILE NOT FOUND
