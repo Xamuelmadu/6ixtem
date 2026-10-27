@@ -19,6 +19,16 @@ type ChatMessage = {
   content: string;
 };
 
+type BusinessOSQualification = {
+  fullName: string;
+  email: string;
+  businessName: string;
+  industry: string;
+  teamSize: string;
+  investmentReadiness: "yes" | "maybe" | "no";
+  submittedAt: string;
+};
+
 type AssessmentResponse = {
   message: string;
   nextStep?: string;
@@ -38,6 +48,7 @@ type AssessmentResponse = {
 
 const SESSION_KEY = "6ixtem_assessment_session";
 const READINESS_KEY = "6ixtem_investment_readiness";
+const QUALIFICATION_KEY = "6ixtem_business_os_qualification";
 
 type FunnelStep =
   | "DISCOVERY"
@@ -47,15 +58,47 @@ type FunnelStep =
   | "BOOKING_LINK_SENT"
   | "ASSESSMENT_CLOSED";
 
+const INITIAL_MESSAGE =
+  "Welcome to your 6ixtem business assessment. I'll ask about your business, how your team operates, the challenges you face and what you want to improve. To begin, what is your business called, what service does it provide, and who are its typical clients?";
+
+function isQualificationContext(
+  value: unknown
+): value is BusinessOSQualification {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const item = value as Record<string, unknown>;
+
+  return (
+    typeof item.fullName === "string" &&
+    item.fullName.trim().length >= 2 &&
+    typeof item.email === "string" &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email) &&
+    typeof item.businessName === "string" &&
+    item.businessName.trim().length >= 2 &&
+    typeof item.industry === "string" &&
+    item.industry.trim().length >= 2 &&
+    typeof item.teamSize === "string" &&
+    ["yes", "maybe", "no"].includes(
+      String(item.investmentReadiness)
+    )
+  );
+}
+
 export default function AssessmentChatPage() {
   const [sessionId, setSessionId] = useState("");
-  const [readiness, setReadiness] = useState("maybe");
+  const [readiness, setReadiness] = useState<"yes" | "maybe" | "no">(
+    "maybe"
+  );
+  const [qualificationContext, setQualificationContext] =
+    useState<BusinessOSQualification | null>(null);
+  const [contextLoaded, setContextLoaded] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content:
-        "Welcome to your 6ixtem business assessment. I'll ask about your business, how your team operates, the challenges you face and what you want to improve. To begin, what is your business called, what service does it provide, and who are its typical clients?",
+      content: INITIAL_MESSAGE,
     },
   ]);
 
@@ -63,7 +106,8 @@ export default function AssessmentChatPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [qualification, setQualification] = useState("");
-  const [funnelStep, setFunnelStep] = useState<FunnelStep>("DISCOVERY");
+  const [funnelStep, setFunnelStep] =
+    useState<FunnelStep>("DISCOVERY");
   const [assessmentId, setAssessmentId] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
 
@@ -73,8 +117,7 @@ export default function AssessmentChatPage() {
     funnelStep === "BOOKING_LINK_SENT" ||
     funnelStep === "ASSESSMENT_CLOSED";
 
-  const isAssessmentCompleted =
-    funnelStep !== "DISCOVERY";
+  const isAssessmentCompleted = funnelStep !== "DISCOVERY";
 
   useEffect(() => {
     let id = sessionStorage.getItem(SESSION_KEY);
@@ -88,9 +131,45 @@ export default function AssessmentChatPage() {
 
     const storedReadiness = sessionStorage.getItem(READINESS_KEY);
 
-    if (storedReadiness) {
+    if (
+      storedReadiness === "yes" ||
+      storedReadiness === "maybe" ||
+      storedReadiness === "no"
+    ) {
       setReadiness(storedReadiness);
     }
+
+    const storedQualification = sessionStorage.getItem(QUALIFICATION_KEY);
+
+    if (storedQualification) {
+      try {
+        const parsed: unknown = JSON.parse(storedQualification);
+
+        if (isQualificationContext(parsed)) {
+          setQualificationContext(parsed);
+
+          // Keep the readiness checkpoint aligned with the submitted form.
+          setReadiness(parsed.investmentReadiness);
+          sessionStorage.setItem(
+            READINESS_KEY,
+            parsed.investmentReadiness
+          );
+
+          setMessages([
+            {
+              role: "assistant",
+              content: `Welcome, ${parsed.fullName}. Let's assess how ${parsed.businessName} operates today and where a tailored business operating system could help. I'll use the details you've already provided and focus on your workflows, challenges, current tools and desired improvements. What is the biggest operational challenge your business needs to solve right now?`,
+            },
+          ]);
+        } else {
+          sessionStorage.removeItem(QUALIFICATION_KEY);
+        }
+      } catch {
+        sessionStorage.removeItem(QUALIFICATION_KEY);
+      }
+    }
+
+    setContextLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -130,7 +209,13 @@ export default function AssessmentChatPage() {
 
     const content = input.trim();
 
-    if (!content || loading || !sessionId || isTerminal) {
+    if (
+      !content ||
+      loading ||
+      !sessionId ||
+      !contextLoaded ||
+      isTerminal
+    ) {
       return;
     }
 
@@ -157,6 +242,7 @@ export default function AssessmentChatPage() {
           sessionId,
           messages: nextMessages,
           investmentReadiness: readiness,
+          qualificationContext,
         }),
       });
 
@@ -186,9 +272,7 @@ export default function AssessmentChatPage() {
         setAssessmentId(data.assessment.id);
       }
 
-      const nextStep = data.nextStep;
-
-      switch (nextStep) {
+      switch (data.nextStep) {
         case "CONTINUE_ASSESSMENT":
           setFunnelStep("DISCOVERY");
           setBookingUrl("");
@@ -222,10 +306,6 @@ export default function AssessmentChatPage() {
           break;
 
         default:
-          // Older responses may not include nextStep. Do not lock the
-          // conversation merely because assessment.completed is true:
-          // qualified prospects still need to give consent and provide
-          // their contact details.
           if (
             data.assessment?.completed &&
             data.qualification?.status &&
@@ -240,6 +320,10 @@ export default function AssessmentChatPage() {
           ? err.message
           : "Something went wrong. Please try again."
       );
+
+      // Preserve the user's response if the request failed.
+      setInput(content);
+      setMessages(messages);
     } finally {
       setLoading(false);
     }
@@ -358,7 +442,10 @@ export default function AssessmentChatPage() {
           </div>
 
           {error && (
-            <div className="mx-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 sm:mx-7">
+            <div
+              role="alert"
+              className="mx-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 sm:mx-7"
+            >
               {error}
             </div>
           )}
@@ -377,10 +464,11 @@ export default function AssessmentChatPage() {
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Your assessment confirmation and consultation booking
-                      link have been sent. Open the email and use the link
-                      to choose a suitable consultation time. If it is not
-                      in your inbox, check your spam or junk folder.
+                      Your assessment confirmation and consultation
+                      booking link have been sent. Open the email and use
+                      the link to choose a suitable consultation time. If
+                      it is not in your inbox, check your spam or junk
+                      folder.
                     </p>
                   </div>
                 </div>
@@ -412,9 +500,9 @@ export default function AssessmentChatPage() {
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      This assessment session has concluded. You are welcome
-                      to return to 6ixtem whenever you are ready to explore
-                      your business requirements further.
+                      This assessment session has concluded. You are
+                      welcome to return to 6ixtem whenever you are ready
+                      to explore your business requirements further.
                     </p>
                   </div>
                 </div>
@@ -436,8 +524,8 @@ export default function AssessmentChatPage() {
             >
               {funnelStep === "AWAITING_CONSENT" && (
                 <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800">
-                  You can continue to receive your assessment and booking
-                  link, or decline without providing contact details.
+                  You can choose to receive your assessment and booking
+                  link by email, or decline without receiving follow-up.
                 </div>
               )}
 
@@ -470,7 +558,7 @@ export default function AssessmentChatPage() {
                         : "off"
                   }
                   className="max-h-36 min-h-[48px] flex-1 resize-y bg-transparent px-3 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
-                  disabled={loading || !sessionId}
+                  disabled={loading || !sessionId || !contextLoaded}
                 />
 
                 <button
@@ -478,16 +566,14 @@ export default function AssessmentChatPage() {
                   disabled={
                     loading ||
                     !input.trim() ||
-                    !sessionId
+                    !sessionId ||
+                    !contextLoaded
                   }
                   aria-label="Send response"
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {loading ? (
-                    <LoaderCircle
-                      size={18}
-                      className="animate-spin"
-                    />
+                    <LoaderCircle size={18} className="animate-spin" />
                   ) : (
                     <ArrowUp size={19} />
                   )}
@@ -537,9 +623,9 @@ export default function AssessmentChatPage() {
             </div>
 
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Your responses help us understand whether the 6ixtem approach
-              matches your business. Qualification is not a guarantee of
-              acceptance or a final implementation quote.
+              Your responses help us understand whether the 6ixtem
+              approach matches your business. Qualification is not a
+              guarantee of acceptance or a final implementation quote.
             </p>
 
             {qualification && (
@@ -550,9 +636,24 @@ export default function AssessmentChatPage() {
 
             {isAssessmentCompleted && !isTerminal && (
               <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">
-                Assessment complete. Follow the conversation to finish the
-                next steps.
+                Assessment complete. Follow the conversation to finish
+                the next steps.
               </p>
+            )}
+
+            {qualificationContext && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Initial details
+                </p>
+                <p className="mt-2 text-sm font-semibold text-slate-800">
+                  {qualificationContext.businessName}
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {qualificationContext.industry} · Team{" "}
+                  {qualificationContext.teamSize}
+                </p>
+              </div>
             )}
 
             {assessmentId && (
