@@ -7,11 +7,10 @@ import {
   createOAuthState,
 } from "@/lib/6ixtem-google-calendar";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-
-  const suppliedSecret =
-    url.searchParams.get("secret");
+export async function POST(request: Request) {
+  const suppliedSecret = request.headers.get(
+    "x-calendar-connect-secret",
+  );
 
   const expectedSecret =
     process.env.GOOGLE_CALENDAR_CONNECT_SECRET;
@@ -20,15 +19,7 @@ export async function GET(request: Request) {
     !expectedSecret ||
     !suppliedSecret ||
     Buffer.byteLength(suppliedSecret) !==
-      Buffer.byteLength(expectedSecret)
-  ) {
-    return NextResponse.json(
-      { error: "Not authorized." },
-      { status: 401 },
-    );
-  }
-
-  if (
+      Buffer.byteLength(expectedSecret) ||
     !crypto.timingSafeEqual(
       Buffer.from(suppliedSecret),
       Buffer.from(expectedSecret),
@@ -44,22 +35,20 @@ export async function GET(request: Request) {
     const oauth = buildOAuthClient();
     const state = createOAuthState();
 
-    const authUrl = oauth.generateAuthUrl({
+    const url = oauth.generateAuthUrl({
       access_type: "offline",
       prompt: "consent",
-
       scope: [
         CALENDAR_SCOPE,
         "https://www.googleapis.com/auth/userinfo.email",
       ],
-
       state,
     });
 
-    return NextResponse.redirect(authUrl);
+    return NextResponse.json({ url });
   } catch (error) {
     console.error(
-      "Google Calendar connection error:",
+      "Google Calendar connection initiation failed:",
       error,
     );
 
