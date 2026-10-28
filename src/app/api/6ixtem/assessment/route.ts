@@ -193,10 +193,14 @@ function getLatestUserMessage(messages: IncomingMessage[]): string {
 }
 
 function isPositiveConsent(message: string): boolean {
-  const value = message.toLowerCase().trim();
+  const value = message
+    .toLowerCase()
+    .trim()
+    .replace(/[.!?,;]+$/g, "")
+    .replace(/\s+/g, " ");
 
-  return /^(yes|yes please|yeah|yep|sure|okay|ok|i agree|i would|i'd like to|let's book|lets book|book a consultation|i want to book|i'm interested|im interested|proceed|continue)$/i.test(
-    value
+  return /^(yes|yes please|yeah|yep|sure|okay|ok|i agree|i would|i'd like to|let's book|lets book|book a consultation|i want to book|i'm interested|im interested|proceed|continue|yes,? (please )?(proceed|continue|book|let's book|lets book)|i would like to (proceed|continue|book|book a consultation)|let's proceed|lets proceed|go ahead|continue to consultation|proceed to consultation)$/i.test(
+    value,
   );
 }
 
@@ -989,14 +993,41 @@ export async function POST(request: Request) {
       assessmentSummary: cleanString(assessment.assessmentSummary),
     };
 
-    const qualification = qualifyAssessment({
-      ...normalized,
-      assessmentComplete: assessment.assessmentComplete === true,
-    });
+  const userMessageCount = messages.filter(
+  (message) => message.role === "user",
+).length;
 
-    const completed =
-      assessment.assessmentComplete === true &&
-      qualification.status !== "NEEDS_DISCOVERY";
+const hasAssessmentFindings =
+  Object.keys(normalized.businessProfile).length > 0 ||
+  normalized.operationalChallenges.length > 0 ||
+  normalized.currentTools.length > 0 ||
+  normalized.requirements.length > 0;
+
+const enoughDiscovery =
+  assessment.assessmentComplete === true &&
+  userMessageCount >= 5 &&
+  hasAssessmentFindings;
+
+const rawQualification = qualifyAssessment({
+  ...normalized,
+  assessmentComplete: enoughDiscovery,
+});
+
+// Completion and qualification are separate decisions.
+// A completed assessment may still require human review.
+const completed = enoughDiscovery;
+
+const qualification = completed &&
+  rawQualification.status === "NEEDS_DISCOVERY"
+  ? {
+      ...rawQualification,
+      status: "NEEDS_REVIEW" as const,
+      reasons: [
+        ...rawQualification.reasons,
+        "The assessment is complete, but some qualification details require review.",
+      ],
+    }
+  : rawQualification;
 
     const conversation = [
       ...messages,
