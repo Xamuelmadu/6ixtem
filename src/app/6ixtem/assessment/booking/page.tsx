@@ -1,5 +1,7 @@
+
 "use client";
 
+import { trackEvent } from "@/lib/analytics";
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -14,12 +16,14 @@ import {
 
 type Slot = { startAt: string; endAt: string; label: string };
 type AvailabilityDate = { date: string; slots: Slot[] };
+
 type AvailabilityResponse = {
   timeZone: string;
   durationMinutes: number;
   dates: AvailabilityDate[];
   error?: string;
 };
+
 type BookingResponse = {
   booking?: {
     id: string;
@@ -95,6 +99,20 @@ function BookingPageContent() {
     () => availability.find((day) => day.date === selectedDate),
     [availability, selectedDate],
   );
+
+  // GA4: Track booking page entry once per assessment in this session.
+  useEffect(() => {
+    if (!assessmentId) return;
+
+    const bookingStartedKey =
+      `6ixtem_ga4_booking_started_${assessmentId}`;
+
+    if (!sessionStorage.getItem(bookingStartedKey)) {
+      trackEvent("consultation_booking_started");
+
+      sessionStorage.setItem(bookingStartedKey, "1");
+    }
+  }, [assessmentId]);
 
   useEffect(() => {
     if (!assessmentId) {
@@ -214,6 +232,19 @@ function BookingPageContent() {
       setConfirmationMessage(
         data.message || "Your consultation has been booked.",
       );
+
+      // GA4: Track only after the API confirms a persisted booking.
+      // Deduplicate by booking ID to avoid duplicate conversion events.
+      const bookingCompletedKey =
+        `6ixtem_ga4_consultation_booked_${data.booking.id}`;
+
+      if (!sessionStorage.getItem(bookingCompletedKey)) {
+        trackEvent("consultation_booked", {
+          booking_status: "confirmed",
+        });
+
+        sessionStorage.setItem(bookingCompletedKey, "1");
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -608,7 +639,6 @@ function BookingPageContent() {
     </main>
   );
 }
-
 
 export default function BookingPage() {
   return (
