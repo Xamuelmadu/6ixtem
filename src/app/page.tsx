@@ -1,4 +1,4 @@
-
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowDownRight,
@@ -76,14 +76,18 @@ export default function HomePage() {
     <main className="overflow-hidden">
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
         <nav className="container-main flex h-[76px] items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
-              <Command size={22} strokeWidth={2.5} />
-            </span>
-            <span className="text-[23px] font-black tracking-[-0.07em] text-slate-950">
-              6ixtem<span className="text-blue-600">.</span>
-            </span>
-          </Link>
+
+<Link href="/" className="flex items-center">
+  <Image
+    src="/logo.png"
+    alt="6ixtem"
+    width={200}
+    height={60}
+    priority
+    className="h-auto w-[180px] object-contain"
+  />
+</Link>
+
 
           <div className="hidden items-center gap-8 text-sm font-semibold text-slate-600 md:flex">
             <a href="#approach" className="hover:text-blue-600">Our approach</a>
