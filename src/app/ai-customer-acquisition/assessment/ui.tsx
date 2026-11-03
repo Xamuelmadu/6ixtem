@@ -1,5 +1,7 @@
+
 "use client";
 
+import { trackEvent } from "@/lib/analytics";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -165,6 +167,27 @@ export default function CustomerAcquisitionAssessment() {
       ]);
 
       setResult(data);
+
+      // Track the assessment only after the first successful API response.
+      if (userMessageCount === 0) {
+        trackEvent("assessment_started", {
+          assessment_type: "customer_acquisition",
+        });
+      }
+
+      // Track completion once per assessment ID in this browser session.
+      if (data.assessment?.completed && data.assessment.id) {
+        const completionKey =
+          `6ixtem_ga4_assessment_completed_${data.assessment.id}`;
+
+        if (!sessionStorage.getItem(completionKey)) {
+          trackEvent("assessment_completed", {
+            assessment_type: "customer_acquisition",
+          });
+
+          sessionStorage.setItem(completionKey, "1");
+        }
+      }
     } catch (requestError) {
       setMessages(nextMessages);
       setError(

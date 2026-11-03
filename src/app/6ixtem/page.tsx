@@ -21,6 +21,43 @@ import {
   ChartNoAxesCombined,
 } from "lucide-react";
 
+import type { Metadata } from "next";
+
+
+export const metadata: Metadata = {
+  title: "Business Operating System for Growing Businesses | 6ixtem",
+  description:
+    "6ixtem helps growing service businesses organize client records, staff responsibilities, workflows, documentation, and operational visibility in one business operating system.",
+  alternates: {
+    canonical: "https://www.6ixtem.com/6ixtem",
+  },
+  openGraph: {
+    title: "Business Operating System for Growing Businesses | 6ixtem",
+    description:
+      "Organize your clients, staff, workflows, and business operations with 6ixtem Business OS.",
+    url: "https://www.6ixtem.com/6ixtem",
+    siteName: "6ixtem",
+    type: "website",
+  },
+};
+
+const businessOsSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "6ixtem Business OS",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "A business operating system designed around growing service businesses to organize client records, staff responsibilities, workflows, documentation, and operational visibility.",
+  url: "https://www.6ixtem.com/6ixtem",
+  publisher: {
+    "@type": "Organization",
+    name: "6ixtem",
+    url: "https://www.6ixtem.com",
+  },
+};
+
+
 const challenges = [
   {
     title: "Your business depends too much on you",
@@ -273,6 +310,12 @@ const fitPoints = [
 export default function SixxtemPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(businessOsSchema),
+        }}
+      />
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
         <nav className="container-main flex h-[72px] items-center justify-between gap-4">
           <Link href="/" className="text-2xl font-black tracking-[-0.07em]">

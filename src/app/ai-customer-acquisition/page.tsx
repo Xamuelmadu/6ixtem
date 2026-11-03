@@ -20,9 +20,36 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "AI Customer Acquisition Systems | 6ixtem",
+  title: "AI Customer Acquisition & Lead Qualification | 6ixtem",
   description:
     "Build a custom AI customer acquisition system to answer enquiries, assess prospects, qualify leads, support bookings and prepare your team for better customer conversations.",
+  alternates: {
+    canonical: "https://www.6ixtem.com/ai-customer-acquisition",
+  },
+  openGraph: {
+    title: "AI Customer Acquisition & Lead Qualification | 6ixtem",
+    description:
+      "Build a custom AI customer acquisition system to answer enquiries, assess prospects, qualify leads, support bookings and prepare your team for better customer conversations.",
+    url: "https://www.6ixtem.com/ai-customer-acquisition",
+    siteName: "6ixtem",
+    type: "website",
+  },
+};
+
+const aiCustomerAcquisitionSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "6ixtem AI Customer Acquisition",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "A custom AI customer acquisition system for answering enquiries, assessing prospects, qualifying leads, supporting bookings and preparing teams for customer conversations.",
+  url: "https://www.6ixtem.com/ai-customer-acquisition",
+  publisher: {
+    "@type": "Organization",
+    name: "6ixtem",
+    url: "https://www.6ixtem.com",
+  },
 };
 
 const problems = [
@@ -225,6 +252,12 @@ function CTA({
 export default function AICustomerAcquisitionPage() {
   return (
     <main className="min-h-screen overflow-hidden bg-white text-slate-950">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(aiCustomerAcquisitionSchema),
+        }}
+      />
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
         <nav className="container-main flex h-[72px] items-center justify-between">
           <Link
@@ -671,7 +704,7 @@ export default function AICustomerAcquisitionPage() {
                 Commercial starting point
               </p>
               <p className="mt-2 text-3xl font-black">
-                $1,500{" "}
+                $700{" "}
                 <span className="text-base font-semibold text-slate-500">
                   implementation from
                 </span>
