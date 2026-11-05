@@ -1,4 +1,6 @@
-﻿import crypto from "node:crypto";
+}                      Get-Content ".\src\app\api\6ixtem\calendar\book\route.ts"
+>> Get-Content ".\src\lib\6ixtem-email.ts"
+import crypto from "node:crypto";
 
 import { NextResponse } from "next/server";
 
@@ -104,6 +106,70 @@ function getSiteUrl(): string {
 
 
 
+
+const MEET_LINK_POLL_ATTEMPTS = 8;
+const MEET_LINK_POLL_INTERVAL_MS = 1_500;
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function extractMeetUrl(event: {
+  hangoutLink?: string | null;
+  conferenceData?: {
+    entryPoints?: Array<{
+      entryPointType?: string | null;
+      uri?: string | null;
+    }> | null;
+  } | null;
+}): string | null {
+  return (
+    event.hangoutLink ??
+    event.conferenceData?.entryPoints?.find(
+      (entry) => entry.entryPointType === "video",
+    )?.uri ??
+    null
+  );
+}
+
+/**
+ * Google creates conference data asynchronously. Poll the event briefly
+ * before persisting the booking, so the confirmation email normally
+ * contains the actual Meet URL.
+ */
+async function waitForMeetUrl(
+  calendar: Awaited<ReturnType<typeof getCalendarClient>>["calendar"],
+  calendarId: string,
+  eventId: string,
+  initialEvent: Parameters<typeof extractMeetUrl>[0],
+): Promise<string | null> {
+  let meetUrl = extractMeetUrl(initialEvent);
+
+  for (
+    let attempt = 0;
+    !meetUrl && attempt < MEET_LINK_POLL_ATTEMPTS;
+    attempt += 1
+  ) {
+    await sleep(MEET_LINK_POLL_INTERVAL_MS);
+
+    try {
+      const response = await calendar.events.get({
+        calendarId,
+        eventId,
+      });
+
+      meetUrl = extractMeetUrl(response.data);
+    } catch (error) {
+      console.warn(
+        `Google Meet link polling attempt ${attempt + 1} failed:`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
+  return meetUrl;
+}
+
 async function sendBookingEmails(input: {
 
   bookingId: string;
@@ -176,7 +242,7 @@ async function sendBookingEmails(input: {
 
     ? `<p><strong>Google Meet:</strong> <a href="${escapeHtml(meetUrl)}">${escapeHtml(meetUrl)}</a></p>`
 
-    : "<p>Your calendar invitation contains the meeting details. If the Google Meet link is not yet available, it may appear after Google finishes preparing the event.</p>";
+    : "<p>Google is still preparing your Meet link. Please use the Google Calendar invitation for meeting details; the link will appear there once ready.</p>";
 
 
 
@@ -324,7 +390,7 @@ async function sendBookingEmails(input: {
 
         to: adminEmail,
 
-        subject: `New 6ixtem consultation booking â€” ${attendeeName}`,
+        subject: `New 6ixtem consultation booking — ${attendeeName}`,
 
         text: emailText(
 
@@ -861,7 +927,7 @@ export async function POST(request: Request) {
 
           assessment.businessName
 
-            ? ` â€” ${assessment.businessName}`
+            ? ` — ${assessment.businessName}`
 
             : ""
 
@@ -951,55 +1017,14 @@ export async function POST(request: Request) {
 
 
 
-    // Conference creation may be asynchronous. Retrieve the event
-
-    // again to obtain a Meet URL when it is already available.
-
-    let refreshedEvent = eventResponse.data;
-
-
-
-    try {
-
-      const refreshed = await calendar.events.get({
-
-        calendarId,
-
-        eventId: createdEventId,
-
-      });
-
-
-
-      refreshedEvent = refreshed.data;
-
-    } catch (error) {
-
-      console.warn(
-
-        "Could not refresh Google Calendar event details yet:",
-
-        error,
-
-      );
-
-    }
-
-
-
-    const meetUrl =
-
-      refreshedEvent.hangoutLink ??
-
-      refreshedEvent.conferenceData?.entryPoints?.find(
-
-        (entry) => entry.entryPointType === "video",
-
-      )?.uri ??
-
-      null;
-
-
+    // Google conference creation is asynchronous; poll briefly for the
+    // generated Meet URL before saving and sending confirmation emails.
+    const meetUrl = await waitForMeetUrl(
+      calendar,
+      calendarId,
+      createdEventId,
+      eventResponse.data,
+    );
 
     // Persist the booking before attempting email delivery.
 
@@ -1091,7 +1116,7 @@ export async function POST(request: Request) {
 
         ? "Your consultation is booked. A confirmation email and calendar invitation have been sent."
 
-        : "Your consultation is booked and a confirmation email has been sent. Google Meet details may take a short time to become available."
+        : "Your consultation is booked and a confirmation email has been sent. If Google Meet is still processing, the link will be available in your calendar invitation."
 
       : "Your consultation is booked, but we could not send the confirmation email. Your booking remains confirmed; please keep the booking reference and contact the 6ixtem team if needed.";
 
@@ -1194,3 +1219,4 @@ export async function POST(request: Request) {
   }
 
 }
+
