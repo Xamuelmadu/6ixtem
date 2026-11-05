@@ -1,5 +1,3 @@
-}                      Get-Content ".\src\app\api\6ixtem\calendar\book\route.ts"
->> Get-Content ".\src\lib\6ixtem-email.ts"
 import crypto from "node:crypto";
 
 import { NextResponse } from "next/server";
