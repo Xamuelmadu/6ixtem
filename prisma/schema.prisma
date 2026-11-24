@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,36 +8,48 @@ datasource db {
 }
 
 model Lead {
-  id        Int        @id @default(autoincrement())
-  name      String
-  email     String
-  phone     String?
-  message   String
-  status    LeadStatus @default(NEW)
-  budget    String?
-  project   String?
-  timeline  String?
-  notes     String?
-  score     Int        @default(0)
-  source    String?
-  priority  Int        @default(0)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id       Int        @id @default(autoincrement())
+  name     String
+  email    String
+  phone    String?
+  message  String
+  status   LeadStatus @default(NEW)
+  budget   String?
+  project  String?
+  timeline String?
+  notes    String?
+  score    Int        @default(0)
+  source   String?
+  priority Int        @default(0)
 
-  assessment Assessment?
+  // CRM fields
+  companyName     String?
+  industry        String?
+  assignedTo      String?
+  lastContactedAt DateTime?
+  archivedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assessments Assessment[]
+
+  @@index([email])
+  @@index([status, createdAt])
+  @@index([source])
 }
 
 model Assessment {
   id        String @id @default(cuid())
   sessionId String @unique
 
-  leadId Int?  @unique
+  leadId Int?
   lead   Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   status              AssessmentStatus    @default(IN_PROGRESS)
   qualificationStatus QualificationStatus @default(NEEDS_DISCOVERY)
   qualificationScore  Int                 @default(0)
-  assessmentType String @default("BUSINESS_OS")
+  assessmentType      String              @default("BUSINESS_OS")
 
   contactName  String?
   contactEmail String?
@@ -64,9 +75,12 @@ model Assessment {
   conversation          Json?
   assessmentSummary     String?
 
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  completedAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  leadFunnelSession LeadFunnelSession?
+
+  @@index([leadId])
 }
 
 enum LeadStatus {
@@ -122,8 +136,8 @@ model Booking {
   emailDeliveries EmailDelivery[]
 
   cancelledAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([assessmentId])
   @@index([startAt, endAt])
@@ -138,19 +152,19 @@ enum BookingStatus {
 }
 
 model GoogleCalendarConnection {
-  id                    String   @id @default("primary")
-  calendarId            String   @default("primary")
+  id                    String  @id @default("primary")
+  calendarId            String  @default("primary")
   encryptedRefreshToken String
   connectedEmail        String?
-  connected             Boolean  @default(true)
+  connected             Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model EmailDelivery {
-  id     String @id @default(cuid())
-  key    String @unique
+  id     String              @id @default(cuid())
+  key    String              @unique
   type   EmailDeliveryType
   status EmailDeliveryStatus @default(PENDING)
 
@@ -173,6 +187,80 @@ model EmailDelivery {
 
   @@index([status, scheduledFor])
   @@index([bookingId, type])
+}
+
+model LeadFunnelSession {
+  id        String      @id @default(cuid())
+  sessionId String      @unique
+  stage     FunnelStage @default(QUALIFICATION_STARTED)
+
+  contactName         String?
+  contactEmail        String?
+  businessName        String?
+  industry            String?
+  teamSize            String?
+  investmentReadiness String?
+
+  followUpConsent Boolean   @default(false)
+  consentAt       DateTime?
+  unsubscribedAt  DateTime?
+
+  assessmentId String?     @unique
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+
+  lastActivityAt DateTime  @default(now())
+  completedAt    DateTime?
+
+  followUps LeadFollowUp[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stage, lastActivityAt])
+  @@index([contactEmail])
+}
+
+model LeadFollowUp {
+  id              String @id @default(cuid())
+  funnelSessionId String
+
+  funnelSession LeadFunnelSession @relation(fields: [funnelSessionId], references: [id], onDelete: Cascade)
+
+  sequence          FollowUpSequence
+  step              Int
+  status            FollowUpStatus   @default(SCHEDULED)
+  scheduledFor      DateTime
+  sentAt            DateTime?
+  providerMessageId String?
+  error             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([funnelSessionId, sequence, step])
+  @@index([status, scheduledFor])
+}
+
+enum FunnelStage {
+  QUALIFICATION_STARTED
+  QUALIFICATION_COMPLETED
+  ASSESSMENT_STARTED
+  ASSESSMENT_ABANDONED
+  ASSESSMENT_COMPLETED
+  BOOKED
+}
+
+enum FollowUpSequence {
+  QUALIFICATION_ABANDONMENT
+  ASSESSMENT_ABANDONMENT
+}
+
+enum FollowUpStatus {
+  SCHEDULED
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
 }
 
 enum EmailDeliveryType {

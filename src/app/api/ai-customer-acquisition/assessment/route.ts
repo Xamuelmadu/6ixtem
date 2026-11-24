@@ -1,7 +1,9 @@
+
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { findOrCreateAssessmentLead } from "@/lib/crm/lead.service";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -606,6 +608,29 @@ primary use case. Ask one focused question at a time.`,
         assessmentSummary: true,
       },
     });
+
+    // CRM synchronization is isolated: a CRM failure must not undo a saved assessment.
+    try {
+      const lead = await findOrCreateAssessmentLead({
+        name: qualificationContext.fullName,
+        email: qualificationContext.email,
+        businessName: qualificationContext.businessName,
+        industry: qualificationContext.industry,
+        message: "Submitted AI Customer Acquisition assessment",
+        source: "ai-customer-acquisition-assessment",
+        offerType: "CUSTOMER_ACQUISITION",
+      });
+
+      await prisma.assessment.update({
+        where: { id: saved.id },
+        data: { leadId: lead.id },
+      });
+    } catch (crmError) {
+      console.error("Customer Acquisition CRM synchronization failed:", {
+        assessmentId: saved.id,
+        error: crmError instanceof Error ? crmError.message : String(crmError),
+      });
+    }
 
     const isQualified =
       saved.status === "COMPLETED" &&

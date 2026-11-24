@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { qualifyAssessment } from "@/lib/6ixtem-qualification";
+import { findOrCreateAssessmentLead } from "@/lib/crm/lead.service";
 import {
   send6ixtemEmail,
   getAdminNotificationEmail,
@@ -60,7 +61,7 @@ certifications, or quote a final implementation price.
 
 If the business appears suitable, say that a consultation may be the
 next step. Do not claim a consultation has been booked.
-The application—not you—determines qualification and controls the
+The applicationâ€”not youâ€”determines qualification and controls the
 booking-consent process.
 
 If the business is not suitable, close politely without pressure.
@@ -637,6 +638,30 @@ export async function POST(request: Request) {
           },
         });
 
+        // Keep the prospect in the permanent CRM even if they only provide
+        // their contact details after completing the assessment.
+        try {
+          const lead = await findOrCreateAssessmentLead({
+            name: existing.contactName,
+            email,
+            businessName: existing.businessName,
+            industry: existing.industry,
+            message: "Submitted 6ixtem Business OS assessment",
+            source: "6ixtem-business-os-assessment",
+            offerType: "BUSINESS_OS",
+          });
+
+          await prisma.assessment.update({
+            where: { id: existing.id },
+            data: { leadId: lead.id },
+          });
+        } catch (crmError) {
+          console.error("Business OS CRM synchronization failed:", {
+            assessmentId: existing.id,
+            error: crmError instanceof Error ? crmError.message : String(crmError),
+          });
+        }
+
         const bookingUrl =
           `/6ixtem/assessment/booking?assessmentId=${encodeURIComponent(existing.id)}`;
 
@@ -1107,6 +1132,31 @@ const qualification = completed &&
       },
     });
 
+    // CRM synchronization is isolated: a CRM failure must not undo a saved assessment.
+    if (qualificationContext) {
+      try {
+        const lead = await findOrCreateAssessmentLead({
+          name: qualificationContext.fullName,
+          email: qualificationContext.email,
+          businessName: normalized.businessName,
+          industry: normalized.industry,
+          message: "Submitted 6ixtem Business OS assessment",
+          source: "6ixtem-business-os-assessment",
+          offerType: "BUSINESS_OS",
+        });
+
+        await prisma.assessment.update({
+          where: { id: saved.id },
+          data: { leadId: lead.id },
+        });
+      } catch (crmError) {
+        console.error("Business OS CRM synchronization failed:", {
+          assessmentId: saved.id,
+          error: crmError instanceof Error ? crmError.message : String(crmError),
+        });
+      }
+    }
+
     const canBook =
       saved.status === "COMPLETED" &&
       saved.qualificationStatus === "QUALIFIED";
@@ -1145,7 +1195,6 @@ const qualification = completed &&
               <p><strong>Assessment ID:</strong> ${escapeHtml(saved.id)}</p>
               <h2>Summary</h2>
               ${htmlParagraphs(normalized.assessmentSummary || "Not provided")}
-            `
           )
         );
 
