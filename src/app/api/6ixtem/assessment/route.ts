@@ -1195,6 +1195,7 @@ const qualification = completed &&
               <p><strong>Assessment ID:</strong> ${escapeHtml(saved.id)}</p>
               <h2>Summary</h2>
               ${htmlParagraphs(normalized.assessmentSummary || "Not provided")}
+            `
           )
         );
 

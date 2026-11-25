@@ -1,9 +1,6 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createAdminSession } from "@/lib/crm/admin-auth";
-
-export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
