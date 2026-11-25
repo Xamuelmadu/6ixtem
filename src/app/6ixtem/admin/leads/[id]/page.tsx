@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 type LeadStatus =
@@ -77,7 +77,7 @@ function getAssessmentStatusLabel(status: string): string {
   return status.replace(/_/g, " ");
 }
 
-export default function CRMLeadDetailPage() {
+function CRMLeadDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
 
@@ -576,5 +576,20 @@ export default function CRMLeadDetailPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+
+export default function CRMLeadDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-slate-50 p-10 text-slate-600">
+          Loading lead...
+        </main>
+      }
+    >
+      <CRMLeadDetailContent />
+    </Suspense>
   );
 }
