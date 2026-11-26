@@ -1,9 +1,8 @@
-
 "use client";
 
 import { trackEvent } from "@/lib/analytics";
-import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Bot,
@@ -27,6 +26,7 @@ type QualificationContext = {
   primaryUseCase: string;
   monthlyEnquiries: string;
   expectedInvestment: string;
+  source?: string;
   submittedAt?: string;
 };
 
@@ -46,118 +46,133 @@ type ApiResponse = {
   bookingUrl?: string | null;
 };
 
-const STORAGE_KEY = "6ixtem_customer_acquisition_qualification";
+const QUALIFICATION_KEY = "6ixtem_digital_growth_qualification";
+const SESSION_KEY = "6ixtem_digital_growth_session";
 
-export default function CustomerAcquisitionAssessment() {
+function isValidContext(value: unknown): value is QualificationContext {
+  if (!value || typeof value !== "object") return false;
+
+  const context = value as Partial<QualificationContext>;
+
+  return [
+    context.fullName,
+    context.email,
+    context.businessName,
+    context.industry,
+    context.primaryUseCase,
+    context.monthlyEnquiries,
+    context.expectedInvestment,
+  ].every((field) => typeof field === "string" && field.trim().length > 0);
+}
+
+function createSessionId() {
+  return `dg_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
+export default function DigitalGrowthAssessment() {
   const [sessionId, setSessionId] = useState("");
-  const [qualificationContext, setQualificationContext] =
-    useState<QualificationContext | null>(null);
+  const [context, setContext] = useState<QualificationContext | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [initializing, setInitializing] = useState(true);
-  const [error, setError] = useState("");
   const [result, setResult] = useState<ApiResponse | null>(null);
+  const [error, setError] = useState("");
+  const [initializing, setInitializing] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const sending = useRef(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
-      const savedContext = sessionStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(QUALIFICATION_KEY);
 
-      if (!savedContext) {
-        setInitializing(false);
+      if (!saved) return;
+
+      const parsed: unknown = JSON.parse(saved);
+
+      if (!isValidContext(parsed)) {
+        setError("Your qualification details are incomplete. Please submit the form again.");
         return;
       }
 
-      const parsedContext = JSON.parse(
-        savedContext,
-      ) as QualificationContext;
-
-      setQualificationContext(parsedContext);
-
-      const existingSession = sessionStorage.getItem(
-        "6ixtem_customer_acquisition_session",
-      );
-
+      const existingSession = sessionStorage.getItem(SESSION_KEY);
       const nextSession =
-        existingSession ||
-        `ca_${crypto.randomUUID().replace(/-/g, "")}`;
+        existingSession && /^dg_[a-zA-Z0-9_-]{10,100}$/.test(existingSession)
+          ? existingSession
+          : createSessionId();
 
-      sessionStorage.setItem(
-        "6ixtem_customer_acquisition_session",
-        nextSession,
-      );
+      sessionStorage.setItem(SESSION_KEY, nextSession);
 
+      setContext(parsed);
       setSessionId(nextSession);
-
       setMessages([
         {
           role: "assistant",
-          content: `Welcome${parsedContext.fullName ? `, ${parsedContext.fullName.split(" ")[0]}` : ""}. I've got the initial information about ${parsedContext.businessName}. I'll use it as context, so we can focus on how your customer acquisition process works rather than repeating the form.`,
+          content: `Welcome, ${parsed.fullName.trim().split(/\s+/)[0]}. We've received the initial information about ${parsed.businessName}. We'll use it to assess your digital growth needs without repeating the qualification form.`,
         },
         {
           role: "assistant",
-          content: `You indicated that your main priority is: ${parsedContext.primaryUseCase}. To start, can you walk me through what currently happens when a potential customer first contacts your business?`,
+          content:
+            "What is the biggest challenge your business currently faces with its online visibility, advertising, or generating customer enquiries?",
         },
       ]);
     } catch {
       setError(
-        "We could not load your initial answers. Please return to the qualification form and try again.",
+        "We could not load your qualification details. Please return to the form and try again."
       );
     } finally {
       setInitializing(false);
     }
   }, []);
 
-  const userMessageCount = useMemo(
-    () => messages.filter((message) => message.role === "user").length,
-    [messages],
-  );
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages, loading]);
 
-  async function sendMessage(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault();
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
     const content = input.trim();
 
-    if (!content || loading || !sessionId || result?.assessment?.completed) {
+    if (
+      !content ||
+      !context ||
+      !sessionId ||
+      sending.current ||
+      result?.assessment?.completed
+    ) {
       return;
     }
-
-    setError("");
-    setInput("");
-    setLoading(true);
 
     const nextMessages: Message[] = [
       ...messages,
       { role: "user", content },
     ];
 
+    sending.current = true;
+    setLoading(true);
+    setError("");
+    setInput("");
     setMessages(nextMessages);
 
     try {
-      const response = await fetch(
-        "/api/ai-customer-acquisition/assessment",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            sessionId,
-            messages: nextMessages,
-            qualificationContext,
-          }),
-        },
-      );
+      const response = await fetch("/api/digital-growth-package/assessment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          messages: nextMessages,
+          qualificationContext: context,
+        }),
+      });
 
-      const data = (await response.json()) as ApiResponse;
+      const data: ApiResponse = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.error || "We could not process your response. Please try again.",
-        );
+        throw new Error(data.error || "We could not process your response.");
       }
 
-      if (!data.message) {
+      if (!data.message?.trim()) {
         throw new Error("The assessment returned an empty response.");
       }
 
@@ -165,247 +180,204 @@ export default function CustomerAcquisitionAssessment() {
         ...nextMessages,
         { role: "assistant", content: data.message },
       ]);
-
       setResult(data);
 
-      // Track the assessment only after the first successful API response.
-      if (userMessageCount === 0) {
-        trackEvent("assessment_started", {
-          assessment_type: "customer_acquisition",
-        });
-      }
-
-      // Track completion once per assessment ID in this browser session.
-      if (data.assessment?.completed && data.assessment.id) {
-        const completionKey =
-          `6ixtem_ga4_assessment_completed_${data.assessment.id}`;
-
-        if (!sessionStorage.getItem(completionKey)) {
-          trackEvent("assessment_completed", {
-            assessment_type: "customer_acquisition",
+      // Analytics must not interrupt the assessment.
+      try {
+        if (nextMessages.filter((m) => m.role === "user").length === 1) {
+          trackEvent("assessment_started", {
+            assessment_type: "digital_growth_package",
           });
-
-          sessionStorage.setItem(completionKey, "1");
         }
+
+        if (data.assessment?.completed && data.assessment.id) {
+          const key = `6ixtem_dg_completed_${data.assessment.id}`;
+
+          if (!sessionStorage.getItem(key)) {
+            trackEvent("assessment_completed", {
+              assessment_type: "digital_growth_package",
+            });
+            sessionStorage.setItem(key, "1");
+          }
+        }
+      } catch {
+        // Analytics are optional.
       }
     } catch (requestError) {
-      setMessages(nextMessages);
+      setMessages(messages);
+      setInput(content);
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Something went wrong. Please try again.",
+          : "Something went wrong. Please try again."
       );
-      setInput(content);
     } finally {
+      sending.current = false;
       setLoading(false);
     }
   }
 
   if (initializing) {
     return (
-      <div className="mt-10 flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-10 text-slate-600">
-        <LoaderCircle size={20} className="animate-spin" />
-        Preparing your assessment...
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">
+        <LoaderCircle className="animate-spin text-blue-600" size={22} />
+        Loading your assessment…
       </div>
     );
   }
 
-  if (!qualificationContext) {
+  if (!context) {
     return (
-      <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
-        <h2 className="text-xl font-bold">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="text-xl font-bold text-slate-950">
           Complete your business qualification first
-        </h2>
+        </h3>
+
         <p className="mt-3 leading-7 text-slate-600">
-          We use your initial business details to personalize this assessment.
-          Please complete the short form before continuing.
+          We need your business details before starting the assessment.
+          Complete the qualification form in this browser tab, then continue
+          to the assessment.
         </p>
+
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-red-600">
+            {error}
+          </p>
+        )}
+
         <Link
-          href="/ai-customer-acquisition/qualify"
-          className="button-primary mt-6 inline-flex items-center gap-2"
+          href="/digital-growth-package/qualify"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
         >
-          Go to qualification form
-          <ArrowRight size={17} />
+          Go to qualification form <ArrowRight size={18} />
         </Link>
       </div>
     );
   }
 
-  const assessmentCompleted = result?.assessment?.completed === true;
-  const consultationAvailable =
-    result?.nextStep === "CONSULTATION_AVAILABLE" &&
-    Boolean(result.bookingUrl);
+  const completed = result?.assessment?.completed === true;
 
   return (
-    <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 p-5 sm:p-6">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white">
-          <Bot size={23} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-bold">AI Customer Acquisition Assessment</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Exploring your process at {qualificationContext.businessName}
-          </p>
-        </div>
-        <span className="hidden rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 sm:inline-flex">
-          Step 2 of 2
-        </span>
-      </div>
-
-      <div className="border-b border-slate-200 p-4 sm:p-5">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          Your initial details
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {[
-            qualificationContext.industry,
-            qualificationContext.primaryUseCase,
-            `Enquiries: ${qualificationContext.monthlyEnquiries}`,
-            `Investment: ${qualificationContext.expectedInvestment}`,
-          ].map((item) => (
-            <span
-              key={item}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700"
-            >
-              {item}
-            </span>
-          ))}
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-blue-100 p-3 text-blue-700">
+            <Bot size={24} />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-950">
+              Digital Growth Assessment
+            </h3>
+            <p className="text-sm text-slate-500">
+              {context.businessName}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div
-        className="max-h-[560px] space-y-5 overflow-y-auto p-4 sm:p-6"
-        aria-live="polite"
-      >
-        {messages.map((message, index) => {
-          const isUser = message.role === "user";
+      <div className="max-h-[480px] space-y-4 overflow-y-auto p-5">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`flex items-start gap-3 ${
+              message.role === "user" ? "justify-end" : ""
+            }`}
+          >
+            {message.role === "assistant" && (
+              <Bot className="mt-1 shrink-0 text-blue-600" size={20} />
+            )}
 
-          return (
             <div
-              key={`${message.role}-${index}`}
-              className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
+              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 leading-7 ${
+                message.role === "user"
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-100 text-slate-800"
+              }`}
             >
-              <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                  isUser
-                    ? "bg-slate-900 text-white"
-                    : "bg-blue-50 text-blue-700"
-                }`}
-              >
-                {isUser ? <UserRound size={18} /> : <Bot size={18} />}
-              </span>
-              <div
-                className={`max-w-[88%] rounded-2xl px-4 py-3 ${
-                  isUser
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-800"
-                }`}
-              >
-                <p className="whitespace-pre-wrap text-sm leading-7">
-                  {message.content}
-                </p>
-              </div>
+              {message.content}
             </div>
-          );
-        })}
+
+            {message.role === "user" && (
+              <UserRound className="mt-1 shrink-0 text-slate-500" size={20} />
+            )}
+          </div>
+        ))}
 
         {loading && (
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-              <Bot size={18} />
-            </span>
-            <span className="flex items-center gap-2">
-              <LoaderCircle size={16} className="animate-spin" />
-              Reviewing your response...
-            </span>
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <LoaderCircle className="animate-spin text-blue-600" size={18} />
+            Reviewing your response…
           </div>
         )}
+
+        <div ref={bottomRef} />
       </div>
 
-      {error && (
-        <div
-          role="alert"
-          className="mx-4 mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700 sm:mx-6"
-        >
-          {error}
-        </div>
-      )}
+      <div className="border-t border-slate-200 p-5">
+        {error && (
+          <p role="alert" className="mb-4 text-sm text-red-600">
+            {error}
+          </p>
+        )}
 
-      {!assessmentCompleted && (
-        <form
-          onSubmit={sendMessage}
-          className="border-t border-slate-200 bg-slate-50 p-4 sm:p-5"
-        >
-          <label htmlFor="assessment-answer" className="sr-only">
-            Your answer
-          </label>
-          <div className="flex items-end gap-2">
+        {completed ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 font-semibold text-slate-950">
+              <CheckCircle2 className="text-blue-600" size={20} />
+              Assessment complete
+            </div>
+
+            {result?.qualification?.status === "QUALIFIED" &&
+            result.bookingUrl ? (
+              <Link
+                href={result.bookingUrl}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
+              >
+                Book a consultation <ArrowRight size={18} />
+              </Link>
+            ) : (
+              <p className="text-sm leading-6 text-slate-600">
+                {result?.nextStep ||
+                  "Your responses have been recorded. Our team can review your business requirements before the next step."}
+              </p>
+            )}
+          </div>
+        ) : (
+          <form onSubmit={sendMessage} className="space-y-3">
+            <label
+              htmlFor="growth-assessment-response"
+              className="block text-sm font-semibold text-slate-700"
+            >
+              Your response
+            </label>
+
             <textarea
-              id="assessment-answer"
+              id="growth-assessment-response"
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Describe how your process works..."
-              rows={2}
+              rows={3}
               maxLength={4000}
+              required
               disabled={loading}
-              className="min-h-[54px] flex-1 resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 disabled:opacity-60"
+              placeholder="Describe your business growth needs…"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
+
             <button
               type="submit"
-              disabled={loading || !input.trim() || !sessionId}
-              className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Send answer"
+              disabled={loading || !input.trim()}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
-                <LoaderCircle size={20} className="animate-spin" />
+                <LoaderCircle className="animate-spin" size={18} />
               ) : (
-                <Send size={19} />
+                <Send size={18} />
               )}
+              Send response
             </button>
-          </div>
-          <p className="mt-3 text-xs text-slate-500">
-            {userMessageCount} responses submitted. Please do not include
-            passwords or other sensitive credentials.
-          </p>
-        </form>
-      )}
-
-      {assessmentCompleted && (
-        <div className="border-t border-slate-200 bg-slate-50 p-5 sm:p-6">
-          <div className="flex items-start gap-3">
-            <CheckCircle2
-              size={23}
-              className="mt-0.5 shrink-0 text-blue-600"
-            />
-            <div>
-              <h3 className="text-lg font-bold">Assessment completed</h3>
-              <p className="mt-2 leading-7 text-slate-600">
-                {result?.assessment?.summary ||
-                  "Your responses have been recorded for review."}
-              </p>
-
-              {consultationAvailable && result?.bookingUrl && (
-                <Link
-                  href={result.bookingUrl}
-                  className="button-primary mt-5 inline-flex items-center gap-2"
-                >
-                  Continue to consultation booking
-                  <ArrowRight size={17} />
-                </Link>
-              )}
-
-              {!consultationAvailable && (
-                <p className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
-                  Your requirements may need further review before a
-                  consultation is recommended. The assessment result reflects
-                  the information collected and does not guarantee eligibility.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }
