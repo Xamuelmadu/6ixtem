@@ -282,19 +282,19 @@ export default function CRMLeadsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6 md:p-10">
+    <main className="min-h-screen bg-[#eef3fc] p-6 md:p-10">
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-500">
-              6ixtem
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#1854d8]">
+              6ixtem / Business OS
             </p>
 
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-4xl font-extrabold tracking-tight text-[#080f25]">
               CRM Leads
             </h1>
 
-            <p className="mt-1 text-slate-500">
+            <p className="mt-1 text-[#52627c]">
               Manage assessment leads and customer relationships.
             </p>
           </div>
@@ -302,35 +302,35 @@ export default function CRMLeadsPage() {
           <button
             onClick={logout}
             disabled={loggingOut}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-[#1854d8] bg-[#1854d8] px-5 py-2 text-sm font-medium text-white transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loggingOut ? "Logging out..." : "Logout"}
           </button>
         </header>
 
         <section className="mt-8 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <p className="text-sm text-slate-500">
+          <div className="rounded-2xl border border-[#14264c] bg-[#101a33] p-6">
+            <p className="text-sm text-blue-200">
               Total leads
             </p>
 
-            <p className="mt-2 text-3xl font-bold text-slate-900">
+            <p className="mt-2 text-4xl font-extrabold tracking-tight text-[#080f25]">
               {total}
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <p className="text-sm text-slate-500">
+          <div className="rounded-2xl border border-[#d7e2f3] bg-white p-5">
+            <p className="text-sm text-[#52627c]">
               Current page
             </p>
 
-            <p className="mt-2 text-3xl font-bold text-slate-900">
+            <p className="mt-2 text-4xl font-extrabold tracking-tight text-[#080f25]">
               {page} / {totalPages}
             </p>
           </div>
         </section>
 
-        <section className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+        <section className="mt-6 rounded-2xl border border-[#d7e2f3] bg-white p-5">
           <div className="flex flex-wrap gap-3">
             <input
               type="search"
@@ -340,7 +340,7 @@ export default function CRMLeadsPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="min-w-[240px] flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
+              className="min-w-[240px] flex-1 rounded-lg border border-[#d7e2f3] px-4 py-2 text-sm text-[#080f25] outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
             />
 
             <select
@@ -349,7 +349,7 @@ export default function CRMLeadsPage() {
                 setStatus(e.target.value as LeadStatus | "");
                 setPage(1);
               }}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+              className="rounded-lg border border-[#d7e2f3] bg-white px-4 py-2 text-sm text-[#080f25] outline-none focus:border-slate-500"
             >
               <option value="">All statuses</option>
 
@@ -371,7 +371,7 @@ export default function CRMLeadsPage() {
                 );
                 setPage(1);
               }}
-              className="min-w-[210px] rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+              className="min-w-[210px] rounded-lg border border-[#d7e2f3] bg-white px-4 py-2 text-sm text-[#080f25] outline-none focus:border-slate-500"
             >
               {SOURCE_OPTIONS.map((item) => (
                 <option
@@ -399,7 +399,7 @@ export default function CRMLeadsPage() {
 
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[1050px] text-left text-sm">
-              <thead className="border-b bg-slate-50 text-slate-500">
+              <thead className="border-b bg-slate-50 text-[#52627c]">
                 <tr>
                   <th className="px-4 py-3 font-medium">
                     Lead
@@ -440,7 +440,7 @@ export default function CRMLeadsPage() {
                   <tr>
                     <td
                       colSpan={8}
-                      className="px-4 py-10 text-center text-slate-500"
+                      className="px-4 py-10 text-center text-[#52627c]"
                     >
                       Loading leads...
                     </td>
@@ -449,7 +449,7 @@ export default function CRMLeadsPage() {
                   <tr>
                     <td
                       colSpan={8}
-                      className="px-4 py-10 text-center text-slate-500"
+                      className="px-4 py-10 text-center text-[#52627c]"
                     >
                       No leads found.
                     </td>
@@ -476,11 +476,11 @@ export default function CRMLeadsPage() {
                         className="cursor-pointer transition hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
                       >
                         <td className="px-4 py-4">
-                          <p className="font-medium text-slate-900">
+                          <p className="font-medium text-[#080f25]">
                             {lead.name}
                           </p>
 
-                          <p className="text-slate-500">
+                          <p className="text-[#52627c]">
                             {lead.email}
                           </p>
 
@@ -505,7 +505,7 @@ export default function CRMLeadsPage() {
                               {sources.map((item) => (
                                 <span
                                   key={item}
-                                  className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
+                                  className="inline-flex rounded-full bg-[#e8f0ff] px-2.5 py-1 text-xs font-medium text-[#1854d8]"
                                 >
                                   {getSourceLabel(item)}
                                 </span>
@@ -545,7 +545,7 @@ export default function CRMLeadsPage() {
                           {lead.assessments?.length ?? 0}
                         </td>
 
-                        <td className="px-4 py-4 text-slate-500">
+                        <td className="px-4 py-4 text-[#52627c]">
                           {new Date(
                             lead.createdAt,
                           ).toLocaleDateString()}
@@ -559,7 +559,7 @@ export default function CRMLeadsPage() {
           </div>
 
           <footer className="mt-5 flex flex-wrap items-center justify-between gap-4">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-[#52627c]">
               Page {page} of {totalPages}
               <span className="ml-2">
                 ({total} total leads)
@@ -572,7 +572,7 @@ export default function CRMLeadsPage() {
                 onClick={() =>
                   setPage((current) => current - 1)
                 }
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-[#d7e2f3] px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Previous
               </button>
@@ -582,7 +582,7 @@ export default function CRMLeadsPage() {
                 onClick={() =>
                   setPage((current) => current + 1)
                 }
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-[#d7e2f3] px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next
               </button>
