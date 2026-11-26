@@ -3,6 +3,8 @@ type AnalyticsEvent =
   | "assessment_started"
   | "assessment_completed"
   | "consultation_booking_started"
+  | "digital_growth_booking_started"
+  | "digital_growth_consultation_booked"
   | "consultation_booked";
 
 type EventParams = Record<string, string | number | boolean>;
